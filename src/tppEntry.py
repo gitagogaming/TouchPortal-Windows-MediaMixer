@@ -340,23 +340,17 @@ TP_PLUGIN_ACTIONS = {
 
 TP_PLUGIN_STATES = {
     'outputDevice': {
-        # 'category' is optional, if omitted then this state will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentOutputDevice",
-        # "text" is the default type and could be omitted here
         'type': "text",
         'desc': "Audio Device: Get default Output devices",
-        # we can conveniently use a value here which we already defined above
         'default': ""
     },
     'outputcommicationDevice': {
-        # 'category' is optional, if omitted then this state will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentOutputCommicationDevice",
-        # "text" is the default type and could be omitted here
         'type': "text",
         'desc': "Audio Device: Get default Output Communications devices",
-        # we can conveniently use a value here which we already defined above
         'default': ""
     },
     'inputDevice': {
@@ -392,6 +386,13 @@ TP_PLUGIN_STATES = {
         'id': PLUGIN_ID + ".state.currentMasterVolume",
         'type': "text",
         'desc': "Volume Mixer: Get Current Master volume",
+        'default': ""
+    },
+        'master volume mute': {
+        'category': "main",
+        'id': PLUGIN_ID + ".state.currentMasterVolumeMute",
+        'type': "text",
+        'desc': "Volume Mixer: Get Current Master volume mute",
         'default': ""
     }
 }

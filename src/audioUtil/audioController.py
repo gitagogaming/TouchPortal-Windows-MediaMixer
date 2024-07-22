@@ -7,53 +7,65 @@ from pycaw.constants import CLSID_MMDeviceEnumerator
 from pycaw.pycaw import (AudioUtilities, EDataFlow, IAudioEndpointVolume,
                          IMMDeviceEnumerator)
 
-
-class AudioController(object):
-    pythoncom.CoInitialize()
+class AudioController:
     def __init__(self, process_name):
+        pythoncom.CoInitialize()
         self.process_name = process_name
-        self.volume = self.process_volume()
+        self.volume = self.get_volume()
+         
+    def __del__(self):
+        pythoncom.CoUninitialize()
+        
+    def get_volume(self):
+        """Getting the current focused application's volume"""
+        session = self.get_session()
+        if session:
+            interface = session.SimpleAudioVolume
+            return interface.GetMasterVolume()
+        return None
 
-    def process_volume(self):
-        pythoncom.CoInitialize()  # 3rd coinitilize...
+    def get_session(self):
+        """Helper function to get the audio session for the given process name"""
         sessions = AudioUtilities.GetAllSessions()
         for session in sessions:
-            interface = session.SimpleAudioVolume
             if session.Process and session.Process.name() == self.process_name:
-                return interface.GetMasterVolume()
+                return session
+        return None
 
-    def set_volume(self, decibels):
-        sessions = AudioUtilities.GetAllSessions()
-        for session in sessions:
+    def set_volume(self, volume):
+        """Setting the application's volume"""
+        session = self.get_session()
+        if session:
             interface = session.SimpleAudioVolume
-            if session.Process and session.Process.name() == self.process_name:
-                # only set volume in the range 0.0 to 1.0
-                self.volume = min(1.0, max(0.0, decibels))
-                interface.SetMasterVolume(self.volume, None)
+            # only set volume in the range 0.0 to 1.0
+            volume = min(1.0, max(0.0, volume))
+            interface.SetMasterVolume(volume, None)
+            self.volume = volume
 
     def decrease_volume(self, decibels):
-        sessions = AudioUtilities.GetAllSessions()
-        for session in sessions:
+        """Decrease the application's volume"""
+        session = self.get_session()
+        if session:
             interface = session.SimpleAudioVolume
-            if session.Process and session.Process.name() == self.process_name:
-                # 0.0 is the min value, reduce by decibels
-                self.volume = max(0.0, self.volume-decibels)
-                interface.SetMasterVolume(self.volume, None)
+            # 0.0 is the min value, reduce by decibels
+            new_volume = max(0.0, self.volume - decibels)
+            interface.SetMasterVolume(new_volume, None)
+            self.volume = new_volume
 
     def increase_volume(self, decibels):
-        sessions = AudioUtilities.GetAllSessions()
-        for session in sessions:
+        """Increase the application's volume"""
+        session = self.get_session()
+        if session:
             interface = session.SimpleAudioVolume
-            if session.Process and session.Process.name() == self.process_name:
-
-                # 1.0 is the max value, raise by decibels
-                self.volume = min(1.0, self.volume+decibels)
-                interface.SetMasterVolume(self.volume, None)
+            # 1.0 is the max value, raise by decibels
+            new_volume = min(1.0, self.volume + decibels)
+            interface.SetMasterVolume(new_volume, None)
+            self.volume = new_volume
 
 
 def muteAndUnMute(process, value):
     pythoncom.CoInitialize()
-    sessions = AudioUtilities.GetAllSessions()
+    sessions = AudioUtilities.GetAllSessions() ## why do we get all sessions again if done previously? why not keep track of sessions
     for session in sessions:
         volume = session.SimpleAudioVolume
         if session.Process and session.Process.name() == process:
@@ -67,7 +79,7 @@ def muteAndUnMute(process, value):
 
 
 def volumeChanger(process, action, value):
-    pythoncom.CoInitialize()
+    # pythoncom.CoInitialize() // this is done when creating the audicontroller object
     if process == "Master Volume":
         if action == "Set":
             setMasterVolume(value)

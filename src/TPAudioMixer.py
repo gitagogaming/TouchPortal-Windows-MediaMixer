@@ -22,24 +22,26 @@ from audioUtil.audioController import (AudioController, get_process_id,
                                        getMasterVolume, muteAndUnMute,
                                        setMasterVolume, volumeChanger,
                                        setDeviceVolume)
+from audioUtil.audioManager import AudioManager, audio_manager
+from TPClient import TPClient, g_log
 from tppEntry import *
 from tppEntry import __version__
 
 sys.coinit_flags = 0
 
-try:
-    TPClient = TP.Client(
-        pluginId = PLUGIN_ID,  # required ID of this plugin
-        sleepPeriod = 0.05,    # allow more time than default for other processes
-        autoClose = True,      # automatically disconnect when TP sends "closePlugin" message
-        checkPluginId = True,  # validate destination of messages sent to this plugin
-        maxWorkers = 4,        # run up to 4 event handler threads
-        updateStatesOnBroadcast = False,  # do not spam TP with state updates on every page change
-    )
-except Exception as e:
-    sys.exit(f"Could not create TP Client, exiting. Error was:\n{repr(e)}")
+# try:
+#     TPClient = TP.Client(
+#         pluginId = PLUGIN_ID,  # required ID of this plugin
+#         sleepPeriod = 0.05,    # allow more time than default for other processes
+#         autoClose = True,      # automatically disconnect when TP sends "closePlugin" message
+#         checkPluginId = True,  # validate destination of messages sent to this plugin
+#         maxWorkers = 4,        # run up to 4 event handler threads
+#         updateStatesOnBroadcast = False,  # do not spam TP with state updates on every page change
+#     )
+# except Exception as e:
+#     sys.exit(f"Could not create TP Client, exiting. Error was:\n{repr(e)}")
 
-g_log = getLogger()
+# g_log = getLogger()
 
 audio_ignore_list = []
 volumeprocess = ["Master Volume", "Current app"]
@@ -107,6 +109,9 @@ def audioStateManager(app_name):
         return True
     return False
 
+
+
+
 class WinAudioCallBack(MagicSession):
     def __init__(self):
         super().__init__(volume_callback=self.update_volume,
@@ -152,12 +157,12 @@ class WinAudioCallBack(MagicSession):
         when volume is changed externally - Updating Sliders and Volume States
         (see callback -> AudioSessionEvents -> OnSimpleVolumeChanged )
         """
+        
 
         if self.app_name not in audio_ignore_list:
             TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
             #print(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
             app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
-
             if app_connector_id in TPClient.shortIdTracker :
                 TPClient.shortIdUpdate(
                     TPClient.shortIdTracker[app_connector_id],
@@ -249,21 +254,24 @@ def stateUpdate():
     updateSwitch = 1
     while running:
         sleep(0.5)
-        TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], pygetwindow.getActiveWindowTitle())
 
         # Update master volume
-        master_volume = getMasterVolume()
-        master_volume_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Master Volume"
-        if master_volume_connector_id in TPClient.shortIdTracker:
-            TPClient.shortIdUpdate(
-                    TPClient.shortIdTracker[master_volume_connector_id],
-                    master_volume)
-        
-        TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
+        # master_volume = getMasterVolume()
+        # master_volume_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Master Volume"
+        # if master_volume_connector_id in TPClient.shortIdTracker:
+            # TPClient.shortIdUpdate(
+                    # TPClient.shortIdTracker[master_volume_connector_id],
+                    # master_volume)
+        # 
+        # TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
 
+
+        ## Getting Current Active Window Title & .exe path to get and update volume
+        TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], pygetwindow.getActiveWindowTitle())
+       
         activeWindow = getActiveExecutablePath()
         current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-        if activeWindow != "" and activeWindow != None and (current_app_volume := AudioController(os.path.basename(activeWindow)).process_volume()):
+        if activeWindow != "" and activeWindow != None and (current_app_volume := AudioController(os.path.basename(activeWindow)).get_volume()):
             if current_app_connector_id in TPClient.shortIdTracker:
                 TPClient.shortIdUpdate(
                     TPClient.shortIdTracker[current_app_connector_id],
@@ -276,6 +284,7 @@ def stateUpdate():
                     0)
             TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], 0)
 
+        ## getting device data for the default input/output devices
         if (updateSwitch == 1):
             TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], getDevicebydata(EDataFlow.eRender.value, ERole.eMultimedia.value))
             updateSwitch = 2
@@ -321,6 +330,18 @@ def run_callback():
         MagicManager.magic_session(WinAudioCallBack)
     except Exception as e:
         g_log.info(e, exc_info=True)
+        
+        
+    ## Starting the Audio Device/Cable Listener
+    # audio_manager = AudioManager()
+    audio_manager.outputDevices= audio_manager.getAllDevices(direction="output")
+    audio_manager.inputDevices= audio_manager.getAllDevices(direction="input")
+    outputDevices = {v: k for k, v in audio_manager.outputDevices.items()} 
+    inputDevices = {v: k for k, v in audio_manager.inputDevices.items()} 
+
+    audio_manager.outputDevices = outputDevices
+    audio_manager.inputDevices = inputDevices
+    audio_manager.start_listening()
 
 
 # Settings handler
