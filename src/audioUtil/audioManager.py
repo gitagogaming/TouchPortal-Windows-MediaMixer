@@ -8,7 +8,7 @@ from pycaw.pycaw import (DEVICE_STATE, AudioUtilities, EDataFlow,
 import threading
 import time
 import pythoncom
-from pycaw.constants import EDataFlow, DEVICE_STATE
+from pycaw.constants import EDataFlow, DEVICE_STATE, ERole
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 from pycaw.callbacks import MMNotificationClient
 from ctypes import POINTER, cast
@@ -19,7 +19,7 @@ from pycaw.api.endpointvolume.depend import AUDIO_VOLUME_NOTIFICATION_DATA
 from TPClient import TPClient, g_log
 from tppEntry import *
 from tppEntry import __version__
-
+from audioUtil import audioSwitch
 
 class AudioEndpointVolumeCallback(COMObject):
     """
@@ -71,23 +71,45 @@ class AudioEndpointVolumeCallback(COMObject):
                 about the volume and mute state of the device.
         """
         notify_data = cast(pNotify, POINTER(AUDIO_VOLUME_NOTIFICATION_DATA)).contents
+        
+        #         # print(f"Event Context: {notify_data.guidEventContext}")
+        #         # print(f"Muted: {notify_data.bMuted}")
+        #         # print(f"Master Volume: {notify_data.fMasterVolume}")
+        #         # print(f"Channel Count: {notify_data.nChannels}")
+        #         # print(f"Channel Volumes: {list(notify_data.afChannelVolumes[:notify_data.nChannels])}")
         # Print volume and mute status along with device name
-        print(f"({self.device_type}){self.device_name}: Muted:{notify_data.bMuted} Volume: {notify_data.fMasterVolume} ")
+        g_log.info(f"({self.device_type}){self.device_name}: Muted:{notify_data.bMuted} Volume: {notify_data.fMasterVolume} ")
         
         # print("Default Input:", audio_manager.device_change_client.defaultInputDevice)
         if self.device_id == audio_manager.device_change_client.defaultInputDevice:
-            print("adjusting input...")
+            master_input_volume = round(notify_data.fMasterVolume * 100)
+            master_input_volume_connector_id = (
+                f"pc_{TP_PLUGIN_INFO['id']}_"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}=Input|"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}=Default"
+            )
+            if master_input_volume_connector_id in TPClient.shortIdTracker:
+                TPClient.shortIdUpdate(
+                        TPClient.shortIdTracker[master_input_volume_connector_id],
+                        master_input_volume)
+
+            TPClient.stateUpdate(TP_PLUGIN_STATES["master volume input"]["id"], str(master_input_volume))
+            TPClient.stateUpdate(TP_PLUGIN_STATES["master volume input mute"]["id"], "Muted" if notify_data.bMuted == 1 else "Un-muted")
             pass
         elif self.device_id == audio_manager.device_change_client.defaultOutputDevice:
-            print("adjusting output...")
             ## we need to find out what device is triggering the volume changes... hmm
             master_volume = round(notify_data.fMasterVolume * 100)
-            master_volume_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Master Volume"
+            master_volume_connector_id = (
+                f"pc_{TP_PLUGIN_INFO['id']}_"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}=Output|"
+                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}=Default"
+            )
             if master_volume_connector_id in TPClient.shortIdTracker:
                 TPClient.shortIdUpdate(
                         TPClient.shortIdTracker[master_volume_connector_id],
                         master_volume)
-
             TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
             TPClient.stateUpdate(TP_PLUGIN_STATES["master volume mute"]["id"], "Muted" if notify_data.bMuted == 1 else "Un-muted")
             #         # print(f"Event Context: {notify_data.guidEventContext}")
@@ -102,6 +124,7 @@ class Client(MMNotificationClient):
     """
     Handles audio device notifications such as default device changes,
     device state changes, and property value changes.
+    - could handle new device connects/disconnects and other things as well
     """
     def __init__(self, setup_default_device_callback):
         """
@@ -109,18 +132,32 @@ class Client(MMNotificationClient):
         """
         super().__init__()
         self.setup_default_device = setup_default_device_callback
-        self.defaultInputDevice = None
         self.defaultOutputDevice = None
+        self.defaultOutputCommunicationDevice = None
+        
+        self.defaultInputDevice = None
+        self.defaultInputCommunicationDevice = None
 
     def OnDefaultDeviceChanged(self, flow, role, pwstrDeviceId):
         print(f"Default device changed: flow={flow}, role={role}, device_id={pwstrDeviceId}")    
             
+        ## if its output
         if flow == EDataFlow.eRender.value:
-            self.defaultOutputDevice = pwstrDeviceId
+            if role == ERole.eCommunications.value:
+                self.defaultOutputCommunicationDevice  = pwstrDeviceId
+                TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], audio_manager.outputDevices.get(self.defaultOutputDevice, "Unknown"))
+            else:
+                self.defaultOutputDevice = pwstrDeviceId
+                TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], audio_manager.outputDevices.get(self.defaultOutputDevice, "Unknown"))
         elif flow == EDataFlow.eCapture.value:
-            self.defaultInputDevice = pwstrDeviceId
-            
-
+            if role == ERole.eCommunications.value:
+                self.defaultInputCommunicationDevice = pwstrDeviceId
+                TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], audio_manager.inputDevices.get(self.defaultInputDevice, "Unknown"))
+            else:
+                self.defaultInputDevice = pwstrDeviceId
+                TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], audio_manager.inputDevices.get(self.defaultInputDevice, "Unknown"))
+        
+        ## starting new new listeners for the new default device
         if flow == EDataFlow.eRender.value or flow == EDataFlow.eCapture.value:
             threading.Thread(target=self.setup_default_device).start()
 
@@ -268,52 +305,130 @@ class AudioManager:
             print(f"Device with ID {device_id} not registered.")
 
     def start_listening(self):
+
         self.register_all_devices()
 
         # Set up device change notification
         self.device_change_client = Client(self.register_all_devices)
         enumerator = AudioUtilities.GetDeviceEnumerator()
         enumerator.RegisterEndpointNotificationCallback(self.device_change_client)
+        
+        self.initialize_default_devices()
 
     def stop_listening(self):
         enumerator = AudioUtilities.GetDeviceEnumerator()
         if self.device_change_client:
             enumerator.UnregisterEndpointNotificationCallback(self.device_change_client)
         self.unregister_all_devices()
-        
-    @staticmethod
-    def getAllDevices(direction, State = DEVICE_STATE.ACTIVE.value):
-        devices = {}
-        # for all use EDataFlow.eAll.value
-        if direction.lower() == "input":
-            Flow = EDataFlow.eCapture.value     # 1
-        else:
-            # Output
-            Flow = EDataFlow.eRender.value      # 0
-        comtypes.CoInitialize()
-        deviceEnumerator = comtypes.CoCreateInstance(
-            CLSID_MMDeviceEnumerator,
-            IMMDeviceEnumerator,
-            comtypes.CLSCTX_INPROC_SERVER)
-        if deviceEnumerator is None:
-            return devices
-        
+    
+    def fetch_devices(self):
+        """ Returns inputDevices, outputDevices"""
+        outputDevices= audioSwitch.MyAudioUtilities.getAllDevices(direction="output")
+        inputDevices= audioSwitch.MyAudioUtilities.getAllDevices(direction="input")
+        self.outputDevices = {v: k for k, v in outputDevices.items()} 
+        self.inputDevices = {v: k for k, v in inputDevices.items()}
+        return inputDevices.keys(), outputDevices.keys()
+         
+    # def initialize_default_devices(self):
+    #     """ 
+    #     When starting up we fetch the default input/output devices 
+    #     Should be event based after that.
+    #     """
+    #     device_map = {
+    #         "outputDevice": (EDataFlow.eRender.value, ERole.eMultimedia.value),
+    #         "outputDeviceCommunication": (EDataFlow.eRender.value, ERole.eCommunications.value),
+    #         "inputDevice": (EDataFlow.eCapture.value, ERole.eMultimedia.value),
+    #         "inputDeviceCommunication": (EDataFlow.eCapture.value, ERole.eCommunications.value)
+    #     }
 
-        collection = deviceEnumerator.EnumAudioEndpoints(Flow, State)
-        if collection is None:
-            return devices
+    #     def get_default_device_id(edata, erole):
+    #         device_enumerator = comtypes.CoCreateInstance(
+    #             CLSID_MMDeviceEnumerator,
+    #             IMMDeviceEnumerator,
+    #             comtypes.CLSCTX_INPROC_SERVER
+    #         )
+    #         default_device = device_enumerator.GetDefaultAudioEndpoint(edata, erole)
+    #         return default_device.GetId() if default_device else None
 
-        count = collection.GetCount()
-        for i in range(count):
-            dev = collection.Item(i)
-            if dev is not None:
-                createDev = AudioUtilities.CreateDevice(dev)
-                if not ": None" in str(createDev):
-                    devices[createDev.FriendlyName] = createDev.id
-                createDev._dev.Release()
-                
-        comtypes.CoUninitialize()
-        return devices
+    #     try:
+    #         for device_key, (edata, erole) in device_map.items():
+    #             device_id = get_default_device_id(edata, erole)
+    #             attr_name = f"default{device_key.capitalize()}"
+    #             setattr(self.device_change_client, attr_name, device_id)
+
+    #             device_dict = self.outputDevices if 'output' in device_key.lower() else self.inputDevices
+    #             state_key = "outputDeviceCommunication" if device_key == "outputCommunicationDevice" else device_key
+    #             TPClient.stateUpdate(TP_PLUGIN_STATES[state_key]["id"], device_dict.get(device_id, "Unknown"))
+
+    #             print(f"Default {device_key} ID: {device_id} ({getattr(self.device_change_client, attr_name)})")
+
+    #     except Exception as e:
+    #         print(f"Error initializing default devices: {e}")
+    def initialize_default_devices(self):
+        """ 
+        When starting up we fetch the default input/output devices 
+        Should be event based after that.
+        """
+        device_map = {
+            "outputDevice": {
+                "edata": EDataFlow.eRender.value,
+                "erole": ERole.eMultimedia.value
+            },
+            "outputCommunicationDevice": {
+                "edata": EDataFlow.eRender.value,
+                "erole": ERole.eCommunications.value
+            },
+            "inputDevice": {
+                "edata": EDataFlow.eCapture.value,
+                "erole": ERole.eMultimedia.value
+            },
+            "inputCommunicationDevice": {
+                "edata": EDataFlow.eCapture.value,
+                "erole": ERole.eCommunications.value
+            }
+        }
+
+        def get_default_device_id(edata, erole):
+            """Helper function to get device ID from device type and role."""
+            
+            ## We could probably just use getDeviceByData and modify it to send us the ID aswlel?
+            device_enumerator = comtypes.CoCreateInstance(
+                CLSID_MMDeviceEnumerator,
+                IMMDeviceEnumerator,
+                comtypes.CLSCTX_INPROC_SERVER
+            )
+            default_device = device_enumerator.GetDefaultAudioEndpoint(edata, erole)
+            return default_device.GetId() if default_device else None
+
+        try:
+            # Retrieve the IDs for all devices
+            default_output_id = get_default_device_id(device_map['outputDevice']['edata'], device_map['outputDevice']['erole'])
+            default_output_communication_id = get_default_device_id(device_map['outputCommunicationDevice']['edata'], device_map['outputCommunicationDevice']['erole'])
+            default_input_id = get_default_device_id(device_map['inputDevice']['edata'], device_map['inputDevice']['erole'])
+            default_input_communication_id = get_default_device_id(device_map['inputCommunicationDevice']['edata'], device_map['inputCommunicationDevice']['erole'])
+
+            # Set the device IDs
+            self.device_change_client.defaultOutputDevice = default_output_id
+            self.device_change_client.defaultOutputCommunicationDevice = default_output_communication_id
+            self.device_change_client.defaultInputDevice = default_input_id
+            self.device_change_client.defaultInputCommunicationDevice = default_input_communication_id
+             
+
+            TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.outputDevices.get(default_output_id, "Unknown"))
+            TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.outputDevices.get(default_output_communication_id, "Unknown"))
+            TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.inputDevices.get(default_input_id, "Unknown"))
+            TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.inputDevices.get(default_input_communication_id, "Unknown"))
+
+
+
+            # Print the device IDs
+            print(f"Default output device ID: {default_output_id} ({self.device_change_client.defaultOutputDevice})")
+            print(f"Default output communication device ID: {default_output_communication_id} ({self.device_change_client.defaultOutputCommunicationDevice})")
+            print(f"Default input device ID: {default_input_id} ({self.device_change_client.defaultInputDevice})")
+            print(f"Default input communication device ID: {default_input_communication_id} ({self.device_change_client.defaultInputCommunicationDevice})")
+        except Exception as e:
+            print(f"Error initializing default devices: {e}")
+
     
     
 audio_manager = AudioManager()

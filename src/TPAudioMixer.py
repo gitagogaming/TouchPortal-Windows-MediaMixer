@@ -23,6 +23,7 @@ from audioUtil.audioController import (AudioController, get_process_id,
                                        setMasterVolume, volumeChanger,
                                        setDeviceVolume)
 from audioUtil.audioManager import AudioManager, audio_manager
+from windowFocusListener import WindowFocusListener
 from TPClient import TPClient, g_log
 from tppEntry import *
 from tppEntry import __version__
@@ -158,7 +159,6 @@ class WinAudioCallBack(MagicSession):
         (see callback -> AudioSessionEvents -> OnSimpleVolumeChanged )
         """
         
-
         if self.app_name not in audio_ignore_list:
             TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
             #print(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
@@ -178,17 +178,16 @@ class WinAudioCallBack(MagicSession):
 
     def update_mute(self, muted):
         """ when mute state is changed by user or through other app """
-        
         if self.app_name not in audio_ignore_list:
             isDeleted = audioStateManager(self.app_name)
-
             if not isDeleted:
                 TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.muteState", "Muted" if muted else "Un-muted")
 
 def updateDevice(options, choiceId, instanceId=None):
     deviceList = list(audioSwitch.MyAudioUtilities.getAllDevices(options).keys())
     if (choiceId == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"] or \
-            choiceId == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"]):
+            choiceId == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"] or \
+                choiceId == TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']):
 
         deviceList.insert(0, "Default")
     if instanceId:
@@ -251,54 +250,27 @@ def getDevicebydata(edata, erole):
         
 
 def stateUpdate():
-    updateSwitch = 1
     while running:
         sleep(0.5)
 
-        # Update master volume
-        # master_volume = getMasterVolume()
-        # master_volume_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Master Volume"
-        # if master_volume_connector_id in TPClient.shortIdTracker:
-            # TPClient.shortIdUpdate(
-                    # TPClient.shortIdTracker[master_volume_connector_id],
-                    # master_volume)
-        # 
-        # TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
-
-
-        ## Getting Current Active Window Title & .exe path to get and update volume
-        TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], pygetwindow.getActiveWindowTitle())
+        # TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], pygetwindow.getActiveWindowTitle())
        
-        activeWindow = getActiveExecutablePath()
-        current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-        if activeWindow != "" and activeWindow != None and (current_app_volume := AudioController(os.path.basename(activeWindow)).get_volume()):
-            if current_app_connector_id in TPClient.shortIdTracker:
-                TPClient.shortIdUpdate(
-                    TPClient.shortIdTracker[current_app_connector_id],
-                    int(current_app_volume*100))
-            TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(int(current_app_volume*100)))
-        else:
-            if current_app_connector_id in TPClient.shortIdTracker:
-                TPClient.shortIdUpdate(
-                    TPClient.shortIdTracker[current_app_connector_id],
-                    0)
-            TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], 0)
+        # activeWindow = getActiveExecutablePath()
+        # current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+        # if activeWindow != "" and activeWindow != None and (current_app_volume := AudioController(os.path.basename(activeWindow)).get_volume()):
+        #     if current_app_connector_id in TPClient.shortIdTracker:
+        #         TPClient.shortIdUpdate(
+        #             TPClient.shortIdTracker[current_app_connector_id],
+        #             int(current_app_volume*100))
+        #     TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(int(current_app_volume*100)))
+        # else:
+        #     if current_app_connector_id in TPClient.shortIdTracker:
+        #         TPClient.shortIdUpdate(
+        #             TPClient.shortIdTracker[current_app_connector_id],
+        #             0)
+        #     TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], 0)
 
-        ## getting device data for the default input/output devices
-        if (updateSwitch == 1):
-            TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], getDevicebydata(EDataFlow.eRender.value, ERole.eMultimedia.value))
-            updateSwitch = 2
-        elif (updateSwitch == 2):
-            TPClient.stateUpdate(TP_PLUGIN_STATES["outputcommicationDevice"]["id"], getDevicebydata(EDataFlow.eRender.value, ERole.eCommunications.value))
-            updateSwitch = 3
-        elif (updateSwitch == 3):
-            TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], getDevicebydata(EDataFlow.eCapture.value, ERole.eMultimedia.value))
-            updateSwitch = 4
-        elif (updateSwitch == 4):
-            TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommication"]["id"], getDevicebydata(EDataFlow.eCapture.value, ERole.eCommunications.value))
-            updateSwitch = 1
-        
-        pythoncom.CoUninitialize()
+        # pythoncom.CoUninitialize()
 
 def handleSettings(settings, on_connect=False):
     global audio_ignore_list
@@ -330,18 +302,21 @@ def run_callback():
         MagicManager.magic_session(WinAudioCallBack)
     except Exception as e:
         g_log.info(e, exc_info=True)
-        
-        
+    
+    try:  
+        listener = WindowFocusListener()
+        listener.start()
+    except Exception as e:
+        g_log.info(e, exc_info=True)
+
     ## Starting the Audio Device/Cable Listener
     # audio_manager = AudioManager()
-    audio_manager.outputDevices= audio_manager.getAllDevices(direction="output")
-    audio_manager.inputDevices= audio_manager.getAllDevices(direction="input")
-    outputDevices = {v: k for k, v in audio_manager.outputDevices.items()} 
-    inputDevices = {v: k for k, v in audio_manager.inputDevices.items()} 
+    try:
+        inputDevices, outputDevices = audio_manager.fetch_devices()
+        audio_manager.start_listening()
+    except Exception as e:
+        g_log.info(e, exc_info=True)
 
-    audio_manager.outputDevices = outputDevices
-    audio_manager.inputDevices = inputDevices
-    audio_manager.start_listening()
 
 
 # Settings handler
@@ -469,14 +444,44 @@ def connectors(data):
 
 
     elif data["connectorId"] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"]:
-        device = "default"
-        if data['data'][0]['value'].lower() != "default":
-            devices = audioSwitch.MyAudioUtilities.getAllDevices(data['data'][0]['value'])
-            device = devices.get(data['data'][1]['value'], "")
+        device_type = data['data'][0]['value']
+        device = "Default" #data['data'][1]['value']
+        
+        slider_value = float(data['value'])
+        volume_scalar = slider_value / 100.0
+        
+        if device_type == "Output":
+            if device == "Default":
+                defaultDeviceID = audio_manager.device_change_client.defaultOutputDevice
+                # Retrieve the volume object for the default output device
+                volume, _ = audio_manager.devices.get(defaultDeviceID, (None, None))
+            else:
+                pass
+        if device_type == "Input":
+            if device == "Default": 
+                defaultDeviceID = audio_manager.device_change_client.defaultInputDevice
+                # Retrieve the volume object for the default output device
+                volume, _ = audio_manager.devices.get(defaultDeviceID, (None, None))
+            else:
+                pass
+            
 
-        if device:
-            print(data)
-            setDeviceVolume(device, data['data'][0]['value'], data['value'])
+        # Check if the volume object exists and set the master volume level
+        if volume:
+            volume.SetMasterVolumeLevelScalar(volume_scalar, None)
+            print(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
+        else:
+            print(f"Device {defaultDeviceID} not found in audio_manager.devices")
+
+
+
+        # if data['data'][0]['value'].lower() != "default":
+            # devices = audioSwitch.MyAudioUtilities.getAllDevices(data['data'][0]['value'])
+            # device = devices.get(data['data'][1]['value'], "")
+# 
+        # if device:
+            # print(data)
+            # setDeviceVolume(device, data['data'][0]['value'], data['value'])
 
 @TPClient.on(TP.TYPES.onListChange)
 def onListChange(data):
@@ -508,12 +513,13 @@ def onListChange(data):
         except Exception as e:
             g_log.info("Update device setDeviceVolume error " + str(e))
     
-    # elif data['actionId'] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"] and \
-    #     data["listId"] == (listId := TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceType"]["id"]):
-    #     try:
-    #         updateDevice(data['value'], listId, data['instanceId'])
-    #     except Exception as e:
-    #         g_log.warning("Update device setDeviceVolume error " + str(e))
+    ## left this the same, but it could be modified a bit.. atleast the UpdateDevice func so it retrieves from audio_controller
+    elif data['actionId'] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"] and \
+        data["listId"] == (listId := TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceType"]["id"]):
+        try:
+            updateDevice(data['value'], TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceOption"]["id"], data['instanceId'])
+        except Exception as e:
+            g_log.warning("Update device setDeviceVolume error " + str(e))
 
 
 # Shutdown handler

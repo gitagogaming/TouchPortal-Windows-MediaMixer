@@ -54,32 +54,32 @@ TP_PLUGIN_CONNECTORS = {
             }
         }
     },
-    ## Disabled because it was too much for plugin to handle
-    # "Windows Audio": {
-    #     "id": PLUGIN_ID + ".connector.WinAudio",
-    #     "name": "Volume Mixer: Windows Volume slider",
-    #     "format": "Control Windows Audio$[1] device$[2]",
-    #     "label": "control windows Volume",
-    #     "data": {
-    #         'deviceType': {
-    #             'id': PLUGIN_ID + ".connector.WinAudio.deviceType",
-    #             'type': "choice",
-    #             'label': "device type",
-    #             'default': "Pick One",
-    #             "valueChoices": [
-    #                 "Output",
-    #                 "Input"
-    #             ]
-    #         },
-    #         'deviceOption': {
-    #             'id': PLUGIN_ID + ".connector.WinAudio.devices",
-    #             'type': "choice",
-    #             'label': "Device choice list",
-    #             'default': "",
-    #             "valueChoices": []
-    #         },
-    #     }
-    # }
+    # Disabled because it was too much for plugin to handle
+    "Windows Audio": {
+        "id": PLUGIN_ID + ".connector.WinAudio",
+        "name": "Volume Mixer: Windows Volume slider",
+        "format": "Control Windows Audio$[1] device$[2]",
+        "label": "control windows Volume",
+        "data": {
+            'deviceType': {
+                'id': PLUGIN_ID + ".connector.WinAudio.deviceType",
+                'type': "choice",
+                'label': "device type",
+                'default': "Pick One",
+                "valueChoices": [
+                    "Output",
+                    "Input"
+                ]
+            },
+            'deviceOption': {
+                'id': PLUGIN_ID + ".connector.WinAudio.devices",
+                'type': "choice",
+                'label': "Device choice list",
+                'default': "",
+                "valueChoices": []
+            },
+        }
+    }
 }
 
 TP_PLUGIN_ACTIONS = {
@@ -343,54 +343,68 @@ TP_PLUGIN_STATES = {
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentOutputDevice",
         'type': "text",
-        'desc': "Audio Device: Get default Output devices",
+        'desc': "Audio Device: Default Output device",
         'default': ""
     },
-    'outputcommicationDevice': {
+    'outputDeviceCommunication': {
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentOutputCommicationDevice",
         'type': "text",
-        'desc': "Audio Device: Get default Output Communications devices",
+        'desc': "Audio Device: Default Output Communications Device",
         'default': ""
     },
     'inputDevice': {
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentInputDevice",
         'type': "text",
-        'desc': "Audio Device: Get default input device",
+        'desc': "Audio Device: Default Input Device",
         'default': ""
     },
-    'inputDeviceCommication': {
+    'inputDeviceCommunication': {
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentInputCommucationDevice",
         'type': "text",
-        'desc': "Audio Device: Get default input Communications device",
+        'desc': "Audio Device: Default Input Communications Device",
         'default': ""
     },
     'FocusedAPP': {
         'category': "main",
         'id': PLUGIN_ID + ".state.currentFocusedAPP",
         'type': "text",
-        'desc': "Volume Mixer: current focused app",
+        'desc': "Volume Mixer: Current Focused App",
         'default': ""
     },
     'currentAppVolume': {
         'category': "main",
         'id': PLUGIN_ID + ".state.currentAppVolume",
         'type': "text",
-        "desc": "Volume Mixer: focused app volume",
+        "desc": "Volume Mixer: Current Focused App volume",
         "default": ""
     },
     'master volume': {
         'category': "main",
         'id': PLUGIN_ID + ".state.currentMasterVolume",
         'type': "text",
-        'desc': "Volume Mixer: Get Current Master volume",
+        'desc': "Volume Mixer: Master Output volume",
         'default': ""
     },
         'master volume mute': {
         'category': "main",
         'id': PLUGIN_ID + ".state.currentMasterVolumeMute",
+        'type': "text",
+        'desc': "Volume Mixer: Master Output volume mute",
+        'default': ""
+    },
+    'master volume input': {
+        'category': "main",
+        'id': PLUGIN_ID + ".state.currentInputMasterVolume",
+        'type': "text",
+        'desc': "Volume Mixer: Master Input volume",
+        'default': ""
+    },
+        'master volume input mute': {
+        'category': "main",
+        'id': PLUGIN_ID + ".state.currentInputMasterVolumeMute",
         'type': "text",
         'desc': "Volume Mixer: Get Current Master volume mute",
         'default': ""
