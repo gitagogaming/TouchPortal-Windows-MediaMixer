@@ -19,6 +19,7 @@ class WindowFocusListener:
         self.TPClient = TPClient
         self.TP_PLUGIN_STATES = TP_PLUGIN_STATES
         self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+        self.last_volume = None
 
 
     def callback(self, hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
@@ -110,19 +111,21 @@ class WindowFocusListener:
 
     def update_volume_info(self, process_name):
         current_app_volume = self.get_volume(process_name)
+        volume_int = 0
+
         if current_app_volume is not None:
             volume_int = int(current_app_volume * 100)
+
+        # Only update if the volume is different from the last volume
+        if volume_int != self.last_volume:
             if self.current_app_connector_id in self.TPClient.shortIdTracker:
                 self.TPClient.shortIdUpdate(
                     self.TPClient.shortIdTracker[self.current_app_connector_id],
-                    volume_int)
+                    volume_int
+                )
             self.TPClient.stateUpdate(self.TP_PLUGIN_STATES['currentAppVolume']['id'], str(volume_int))
-        else:
-            if self.current_app_connector_id in self.TPClient.shortIdTracker:
-                self.TPClient.shortIdUpdate(
-                    self.TPClient.shortIdTracker[self.current_app_connector_id],
-                    0)
-            self.TPClient.stateUpdate(self.TP_PLUGIN_STATES['currentAppVolume']['id'], "0")
+            self.last_volume = volume_int
+
 
 # if __name__ == "__main__":
 #     listener = WindowFocusListener()
