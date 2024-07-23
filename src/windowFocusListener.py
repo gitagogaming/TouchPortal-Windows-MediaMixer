@@ -6,12 +6,13 @@ import threading
 import os
 import psutil
 from pycaw.pycaw import AudioUtilities
-from TPClient import TPClient, g_log
-from tppEntry import *
-from tppEntry import __version__
+from logging import getLogger
+from tppEntry import TP_PLUGIN_STATES, TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, __version__
+
+g_log = getLogger(__name__)
 
 class WindowFocusListener:
-    def __init__(self):
+    def __init__(self, TPClient):
         self.hook = None
         self.win_event_proc = None
         self.running = False

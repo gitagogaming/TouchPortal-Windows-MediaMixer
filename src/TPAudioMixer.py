@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser
 from ctypes import windll
 from logging import (DEBUG, INFO, WARNING, FileHandler, Formatter, NullHandler,
-                     StreamHandler)
+                     StreamHandler, getLogger)
 from threading import Thread
 from time import sleep
 
@@ -21,15 +21,26 @@ from audioUtil.audioController import (AudioController, get_process_id,
                                        getMasterVolume, muteAndUnMute,
                                        setMasterVolume, volumeChanger,
                                        setDeviceVolume)
-from audioUtil.audioManager import AudioManager, audio_manager
+from audioUtil.audioManager import AudioManager
 from windowFocusListener import WindowFocusListener
-from TPClient import TPClient, g_log
-from tppEntry import *
-from tppEntry import __version__
+from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__
+
 
 sys.coinit_flags = 0
+g_log = getLogger(__name__)
 
-
+try:
+    TPClient = TP.Client(
+        pluginId = PLUGIN_ID,  # required ID of this plugin
+        sleepPeriod = 0.05,    # allow more time than default for other processes
+        autoClose = True,      # automatically disconnect when TP sends "closePlugin" message
+        checkPluginId = True,  # validate destination of messages sent to this plugin
+        maxWorkers = 4,        # run up to 4 event handler threads
+        updateStatesOnBroadcast = False,  # do not spam TP with state updates on every page change
+    )
+except Exception as e:
+    sys.exit(f"Could not create TP Client, exiting. Error was:\n{repr(e)}")
+    
 ### Any action which interacts with anything NOT app related can now be updated using the audio_controller.inputDevices etc..
 ### See slider example...
 
@@ -413,14 +424,14 @@ def connectors(data):
         
         if device_type == "Output":
             if device == "Default":
-                defaultDeviceID = audio_manager.device_change_client.defaultOutputDevice
+                defaultDeviceID = audio_manager.device_change_client.defaultOutputDeviceID
                 # Retrieve the volume object for the default output device
                 volume, _ = audio_manager.devices.get(defaultDeviceID, (None, None))
             else:
                 pass
         if device_type == "Input":
             if device == "Default": 
-                defaultDeviceID = audio_manager.device_change_client.defaultInputDevice
+                defaultDeviceID = audio_manager.device_change_client.defaultInputDeviceID
                 # Retrieve the volume object for the default output device
                 volume, _ = audio_manager.devices.get(defaultDeviceID, (None, None))
             else:
@@ -432,7 +443,7 @@ def connectors(data):
             volume.SetMasterVolumeLevelScalar(volume_scalar, None)
             # g_log.info(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
         else:
-            g_log.info(f"Device {defaultDeviceID} not found in audio_manager.devices")
+            g_log.info(f"Device {defaultDeviceID} not found in audio_manager.devices. {audio_manager.device_change_client.defaultOutputDeviceID}")
 
 
 
@@ -486,8 +497,8 @@ def onListChange(data):
 # Shutdown handler
 @TPClient.on(TP.TYPES.onShutdown)
 def onShutdown(data):
-    audio_manager.stop_listening()         # Shuts down cleanly without these
-    audio_manager.unregister_all_devices() # but dont know the potential issues that may arise..
+    audio_manager.unregister_all_devices() # Shuts down cleanly without these
+    audio_manager.stop_listening()         # but dont know the potential issues that may arise..
     listener.stop()
     g_log.info('Received shutdown event from TP Client.')
 
@@ -572,5 +583,6 @@ def main():
     return ret
 
 if __name__ == "__main__":
-    listener = WindowFocusListener()
+    audio_manager = AudioManager(TPClient)
+    listener = WindowFocusListener(TPClient)
     main()
