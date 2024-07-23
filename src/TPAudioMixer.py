@@ -30,19 +30,9 @@ from tppEntry import __version__
 
 sys.coinit_flags = 0
 
-# try:
-#     TPClient = TP.Client(
-#         pluginId = PLUGIN_ID,  # required ID of this plugin
-#         sleepPeriod = 0.05,    # allow more time than default for other processes
-#         autoClose = True,      # automatically disconnect when TP sends "closePlugin" message
-#         checkPluginId = True,  # validate destination of messages sent to this plugin
-#         maxWorkers = 4,        # run up to 4 event handler threads
-#         updateStatesOnBroadcast = False,  # do not spam TP with state updates on every page change
-#     )
-# except Exception as e:
-#     sys.exit(f"Could not create TP Client, exiting. Error was:\n{repr(e)}")
 
-# g_log = getLogger()
+### Any action which interacts with anything NOT app related can now be updated using the audio_controller.inputDevices etc..
+### See slider example...
 
 audio_ignore_list = []
 volumeprocess = ["Master Volume", "Current app"]
@@ -121,7 +111,7 @@ class WinAudioCallBack(MagicSession):
 
         # ______________ DISPLAY NAME ______________
         self.app_name = self.magic_root_session.app_exec
-        #print(f":: new session: {self.app_name}")
+        #g_log.info(f":: new session: {self.app_name}")
         
         if self.app_name not in audio_ignore_list:
             # set initial:
@@ -161,7 +151,7 @@ class WinAudioCallBack(MagicSession):
         
         if self.app_name not in audio_ignore_list:
             TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
-            #print(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
+            #g_log.info(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
             app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
             if app_connector_id in TPClient.shortIdTracker :
                 TPClient.shortIdUpdate(
@@ -249,28 +239,7 @@ def getDevicebydata(edata, erole):
     return str(device)
         
 
-def stateUpdate():
-    while running:
-        sleep(0.5)
 
-        # TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], pygetwindow.getActiveWindowTitle())
-       
-        # activeWindow = getActiveExecutablePath()
-        # current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-        # if activeWindow != "" and activeWindow != None and (current_app_volume := AudioController(os.path.basename(activeWindow)).get_volume()):
-        #     if current_app_connector_id in TPClient.shortIdTracker:
-        #         TPClient.shortIdUpdate(
-        #             TPClient.shortIdTracker[current_app_connector_id],
-        #             int(current_app_volume*100))
-        #     TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(int(current_app_volume*100)))
-        # else:
-        #     if current_app_connector_id in TPClient.shortIdTracker:
-        #         TPClient.shortIdUpdate(
-        #             TPClient.shortIdTracker[current_app_connector_id],
-        #             0)
-        #     TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], 0)
-
-        # pythoncom.CoUninitialize()
 
 def handleSettings(settings, on_connect=False):
     global audio_ignore_list
@@ -294,7 +263,6 @@ def onConnect(data):
     run_callback()
     #g_log.debug(f"--------- Magic already in session!! ---------\n------{err}------")
     
-    Thread(target=stateUpdate).start()
 
 def run_callback():
     pythoncom.CoInitialize()
@@ -304,7 +272,6 @@ def run_callback():
         g_log.info(e, exc_info=True)
     
     try:  
-        listener = WindowFocusListener()
         listener.start()
     except Exception as e:
         g_log.info(e, exc_info=True)
@@ -401,12 +368,6 @@ def onAction(data):
                 return
             
             setDeviceVolume(device, action_data[0]["value"], volume)
-        # for device in audioSwitch.MyAudioUtilities.getAllDevices(action_data[2]["value"]):
-        #     if (deviceId := '' if action_data[1]["value"] == "Default" == 'Default' else device.id if device.FriendlyName == action_data[1]["value"] else None) != None:
-                # if (processid := get_process_id(action_data[0]['value'])) != None:
-                #     g_log.info(f"args devId: {deviceId}, processId: {processid}")
-                #     audioSwitch.SetApplicationEndpoint(deviceId, 1 if action_data[2]["value"] == "Input" else 0, processid)
-            
 
     else:
         g_log.warning("Got unknown action ID: " + actionid)
@@ -469,9 +430,9 @@ def connectors(data):
         # Check if the volume object exists and set the master volume level
         if volume:
             volume.SetMasterVolumeLevelScalar(volume_scalar, None)
-            print(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
+            g_log.info(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
         else:
-            print(f"Device {defaultDeviceID} not found in audio_manager.devices")
+            g_log.info(f"Device {defaultDeviceID} not found in audio_manager.devices")
 
 
 
@@ -480,7 +441,7 @@ def connectors(data):
             # device = devices.get(data['data'][1]['value'], "")
 # 
         # if device:
-            # print(data)
+            # g_log.info(data)
             # setDeviceVolume(device, data['data'][0]['value'], data['value'])
 
 @TPClient.on(TP.TYPES.onListChange)
@@ -525,6 +486,9 @@ def onListChange(data):
 # Shutdown handler
 @TPClient.on(TP.TYPES.onShutdown)
 def onShutdown(data):
+    audio_manager.stop_listening()         # Shuts down cleanly without these
+    audio_manager.unregister_all_devices() # but dont know the potential issues that may arise..
+    listener.stop()
     g_log.info('Received shutdown event from TP Client.')
 
 # Error handler
@@ -608,4 +572,5 @@ def main():
     return ret
 
 if __name__ == "__main__":
+    listener = WindowFocusListener()
     main()
