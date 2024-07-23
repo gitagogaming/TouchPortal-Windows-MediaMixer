@@ -124,10 +124,10 @@ class WindowFocusListener:
                     0)
             self.TPClient.stateUpdate(self.TP_PLUGIN_STATES['currentAppVolume']['id'], "0")
 
-if __name__ == "__main__":
-    listener = WindowFocusListener()
-    try:
-        listener.start()
-        input("Press Enter to stop...")
-    finally:
-        listener.stop()
+# if __name__ == "__main__":
+#     listener = WindowFocusListener()
+#     try:
+#         listener.start()
+#         input("Press Enter to stop...")
+#     finally:
+#         listener.stop()

@@ -3,7 +3,7 @@ import sys
 from argparse import ArgumentParser
 from ctypes import windll
 from logging import (DEBUG, INFO, WARNING, FileHandler, Formatter, NullHandler,
-                     StreamHandler, getLogger)
+                     StreamHandler)
 from threading import Thread
 from time import sleep
 
@@ -242,7 +242,6 @@ def getDevicebydata(edata, erole):
 
 def handleSettings(settings, on_connect=False):
     global audio_ignore_list
-
     settings = { list(settings[i])[0] : list(settings[i].values())[0] for i in range(len(settings)) }
 
     if (value := settings.get(TP_PLUGIN_SETTINGS['ignore list']['name'])) is not None:
@@ -257,9 +256,8 @@ def onConnect(data):
     if settings := data.get('settings'):
         handleSettings(settings, True)
 
+    run_callback()    
     running = True
-
-    run_callback()
     #g_log.debug(f"--------- Magic already in session!! ---------\n------{err}------")
     
 
@@ -497,53 +495,53 @@ def onShutdown(data):
 
 def main():
     global TPClient, g_log
+    if not g_log.hasHandlers():
+        # Handle CLI arguments
+        parser = ArgumentParser()
+        parser.add_argument("-d", action='store_true',
+                            help="Use debug logging.")
+        parser.add_argument("-w", action='store_true',
+                            help="Only log warnings and errors.")
+        parser.add_argument("-q", action='store_true',
+                            help="Disable all logging (quiet).")
+        parser.add_argument("-l", metavar="<logfile>",
+                            help="Log to this file (default is stdout).")
+        parser.add_argument("-s", action='store_true',
+                            help="If logging to file, also output to stdout.")
 
-    # Handle CLI arguments
-    parser = ArgumentParser()
-    parser.add_argument("-d", action='store_true',
-                        help="Use debug logging.")
-    parser.add_argument("-w", action='store_true',
-                        help="Only log warnings and errors.")
-    parser.add_argument("-q", action='store_true',
-                        help="Disable all logging (quiet).")
-    parser.add_argument("-l", metavar="<logfile>",
-                        help="Log to this file (default is stdout).")
-    parser.add_argument("-s", action='store_true',
-                        help="If logging to file, also output to stdout.")
+        opts = parser.parse_args()
+        del parser
 
-    opts = parser.parse_args()
-    del parser
-
-    # set up logging
-    if opts.q:
-        # no logging at all
-        g_log.addHandler(NullHandler())
-    else:
-        # set up pretty log formatting (similar to TP format)
-        fmt = Formatter(
-            fmt="{asctime:s}.{msecs:03.0f} [{levelname:.1s}] [{filename:s}:{lineno:d}] {message:s}",
-            datefmt="%H:%M:%S", style="{"
-        )
-        # set the logging level
-        if   opts.d: g_log.setLevel(DEBUG)
-        elif opts.w: g_log.setLevel(WARNING)
-        else:        g_log.setLevel(INFO)
+        # set up logging
+        if opts.q:
+            # no logging at all
+            g_log.addHandler(NullHandler())
+        else:
+            # set up pretty log formatting (similar to TP format)
+            fmt = Formatter(
+                fmt="{asctime:s}.{msecs:03.0f} [{levelname:.1s}] [{filename:s}:{lineno:d}] {message:s}",
+                datefmt="%H:%M:%S", style="{"
+            )
+            # set the logging level
+            if   opts.d: g_log.setLevel(DEBUG)
+            elif opts.w: g_log.setLevel(WARNING)
+            else:        g_log.setLevel(INFO)
 
 
-        # set up log destination (file/stdout)
-        if opts.l:
-            try:
-                # note that this will keep appending to any existing log file
-                fh = FileHandler(str("log.txt"))
-                fh.setFormatter(fmt)
-                g_log.addHandler(fh)
-            except Exception as e:
-                opts.s = True
-                g_log.info(f"Error while creating file logger, falling back to stdout. {repr(e)}")
-        if not opts.l or opts.s:
-            sh = StreamHandler(sys.stdout)
-            sh.setFormatter(fmt)
-            g_log.addHandler(sh)
+            # set up log destination (file/stdout)
+            if opts.l:
+                try:
+                    # note that this will keep appending to any existing log file
+                    fh = FileHandler(str("log.txt"))
+                    fh.setFormatter(fmt)
+                    g_log.addHandler(fh)
+                except Exception as e:
+                    opts.s = True
+                    g_log.info(f"Error while creating file logger, falling back to stdout. {repr(e)}")
+            if not opts.l or opts.s:
+                sh = StreamHandler(sys.stdout)
+                sh.setFormatter(fmt)
+                g_log.addHandler(sh)
 
     g_log.info(f"Starting {TP_PLUGIN_INFO['name']} v{__version__} on {sys.platform}.")
     ret = 1

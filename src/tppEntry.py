@@ -13,7 +13,7 @@ TP_PLUGIN_INFO = {
         'colorLight': "#3d62ad"
     },
     'doc': {
-        "description": "This is an example plugin for Touch Portal. It demonstrates the basics of how to create a plugin, and how to communicate with Touch Portal.",
+        "description": "Control Windows Media for Audio Devices and Applications",
         "repository": "KillerBOSS2019:TouchPortal-Windows-MediaMixer",
         "Install": "1. Download .tpp file\n2. in TouchPortal gui click gear icon and select 'Import Plugin'\n3. Select the .tpp file\n4. Click 'Import'",
     }
@@ -54,7 +54,6 @@ TP_PLUGIN_CONNECTORS = {
             }
         }
     },
-    # Disabled because it was too much for plugin to handle
     "Windows Audio": {
         "id": PLUGIN_ID + ".connector.WinAudio",
         "name": "Volume Mixer: Windows Volume slider",
@@ -84,22 +83,17 @@ TP_PLUGIN_CONNECTORS = {
 
 TP_PLUGIN_ACTIONS = {
     'AppMute': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.Mute/Unmute",
         'name': 'Volume Mixer: Mute/Unmute process volume',
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
-        # 'format' tokens like $[1] will be replaced in the generated JSON with the corresponding data id wrapped with "{$...$}".
-        # Numeric token values correspond to the order in which the data items are listed here, while text tokens correspond
-        # to the last part of a dotted data ID (the part after the last period; letters, numbers, and underscore allowed).
         'format': "$[1]$[2]app",
         "doc": "Mute/Unmute process volume",
         'data': {
             'appChoice': {
                 'id': PLUGIN_ID + ".act.Mute/Unmute.data.process",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "process list",
                 'default': "",
@@ -120,7 +114,6 @@ TP_PLUGIN_ACTIONS = {
         }
     },
     'Inc/DecrVol': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.Inc/DecrVol",
         'name': 'Adjust App Volume',
@@ -133,7 +126,6 @@ TP_PLUGIN_ACTIONS = {
         'data': {
             'AppChoice': {
                 'id': PLUGIN_ID + ".act.Inc/DecrVol.data.process",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "process list",
                 'default': "",
@@ -160,22 +152,17 @@ TP_PLUGIN_ACTIONS = {
         }
     },
     'ChangeOut/Input': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.ChangeAudioOutput",
         'name': 'Audio Output/Input Device Switcher',
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
-        # 'format' tokens like $[1] will be replaced in the generated JSON with the corresponding data id wrapped with "{$...$}".
-        # Numeric token values correspond to the order in which the data items are listed here, while text tokens correspond
-        # to the last part of a dotted data ID (the part after the last period; letters, numbers, and underscore allowed).
         'format': "Change audio device$[1]$[2]$[3]",
         "doc": "Change Default Audio Devices",
         'data': {
             'optionSel': {
                 'id': PLUGIN_ID + ".act.ChangeAudioOutput.choice",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "process list",
                 'default': "Pick One",
@@ -194,7 +181,6 @@ TP_PLUGIN_ACTIONS = {
             },
             'setType': {
                 'id': PLUGIN_ID + ".act.ChangeAudioOutput.setType",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "Set audio device type",
                 'default': "Default",
@@ -207,22 +193,17 @@ TP_PLUGIN_ACTIONS = {
         }
     },
     'ToggleOut/Input': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.ToggleAudioOutput",
         'name': 'Audio Output/Input Device Toggle',
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
-        # 'format' tokens like $[1] will be replaced in the generated JSON with the corresponding data id wrapped with "{$...$}".
-        # Numeric token values correspond to the order in which the data items are listed here, while text tokens correspond
-        # to the last part of a dotted data ID (the part after the last period; letters, numbers, and underscore allowed).
         'format': "Toggle audio device$[1]$[2]$[3]$[4]",
         "doc": "Toggle Default Audio Devices",
         'data': {
             'optionSel': {
                 'id': PLUGIN_ID + ".act.ToggleAudioOutput.choice",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "process list",
                 'default': "Pick One",
@@ -247,7 +228,6 @@ TP_PLUGIN_ACTIONS = {
             },
             'setType': {
                 'id': PLUGIN_ID + ".act.ToggleAudioOutput.setType",
-                # "text" is the default type and could be omitted here
                 'type': "choice",
                 'label': "Set audio device type",
                 'default': "Default",
@@ -260,16 +240,12 @@ TP_PLUGIN_ACTIONS = {
         }
     },
     'setDeviceVolume': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.changeDeviceVolume",
         'name': 'Set Device Volume',
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
-        # 'format' tokens like $[1] will be replaced in the generated JSON with the corresponding data id wrapped with "{$...$}".
-        # Numeric token values correspond to the order in which the data items are listed here, while text tokens correspond
-        # to the last part of a dotted data ID (the part after the last period; letters, numbers, and underscore allowed).
         'format': "Set Volume$[1]device$[2]to$[3]%",
         "doc": "Change Default Audio Devices",
         'data': {
@@ -299,7 +275,6 @@ TP_PLUGIN_ACTIONS = {
         }
     },
     'AppAudioSwitch': {
-        # 'category' is optional, if omitted then this action will be added to all, or the only, category(ies)
         'category': "main",
         'id': PLUGIN_ID + ".act.appAudioSwitch",
         'name': 'Individual App Audio Device switcher',
@@ -343,7 +318,7 @@ TP_PLUGIN_STATES = {
         'category': "main",
         'id': PLUGIN_ID + ".state.CurrentOutputDevice",
         'type': "text",
-        'desc': "Audio Device: Default Output device",
+        'desc': "Audio Device: Default Output Device",
         'default': ""
     },
     'outputDeviceCommunication': {
@@ -406,7 +381,7 @@ TP_PLUGIN_STATES = {
         'category': "main",
         'id': PLUGIN_ID + ".state.currentInputMasterVolumeMute",
         'type': "text",
-        'desc': "Volume Mixer: Get Current Master volume mute",
+        'desc': "Volume Mixer: Master Input volume mute",
         'default': ""
     }
 }
