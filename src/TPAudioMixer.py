@@ -53,12 +53,15 @@ def updateVolumeMixerChoicelist():
 
 def removeAudioState(app_name):
     global volumeprocess
-    TPClient.removeStateMany([
-            PLUGIN_ID + f".createState.{app_name}.muteState",
-            PLUGIN_ID + f".createState.{app_name}.volume",
-            PLUGIN_ID + f".createState.{app_name}.active"
-            ])
-    volumeprocess.remove(app_name)
+    try:
+        TPClient.removeStateMany([
+                PLUGIN_ID + f".createState.{app_name}.muteState",
+                PLUGIN_ID + f".createState.{app_name}.volume",
+                PLUGIN_ID + f".createState.{app_name}.active"
+                ])
+        volumeprocess.remove(app_name)
+    except Exception as e:
+        g_log.info(f"AudioState not found in states {e}")
     updateVolumeMixerChoicelist() # Update with new changes
 
 def audioStateManager(app_name):
@@ -384,7 +387,7 @@ def heldingButton(data):
 
 @TPClient.on(TP.TYPES.onConnectorChange)
 def connectors(data):
-    g_log.info(f"connector Change: {data}")
+    g_log.debug(f"connector Change: {data}")
     if data['connectorId'] == TP_PLUGIN_CONNECTORS["APP control"]['id']:
         if data['data'][0]['value'] == "Master Volume":
             setMasterVolume(data['value'])
@@ -427,7 +430,7 @@ def connectors(data):
         # Check if the volume object exists and set the master volume level
         if volume:
             volume.SetMasterVolumeLevelScalar(volume_scalar, None)
-            g_log.info(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
+            # g_log.info(f"Set volume for device {defaultDeviceID} to {volume_scalar * 100}%")
         else:
             g_log.info(f"Device {defaultDeviceID} not found in audio_manager.devices")
 
