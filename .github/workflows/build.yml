@@ -1,6 +1,5 @@
 name: build
 
-
 on:
   release:
     types: [published]
@@ -15,8 +14,11 @@ jobs:
         os: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v3
-      
+      - name: Checkout the branch that triggered the release
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.release.target_commitish }}
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
@@ -27,7 +29,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
           pip install -r requirements.txt
-          
+
       - name: Build tpp using build.py
         run: |
           python ./src/build.py
