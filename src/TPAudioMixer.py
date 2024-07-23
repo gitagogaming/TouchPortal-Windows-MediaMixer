@@ -8,7 +8,6 @@ from threading import Thread
 from time import sleep
 
 import psutil
-import pygetwindow
 import pythoncom
 import TouchPortalAPI as TP
 import win32process
