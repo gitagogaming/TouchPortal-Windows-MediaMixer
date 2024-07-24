@@ -50,11 +50,12 @@ TP_PLUGIN_CATEGORIES = {
         'id': PLUGIN_ID + ".focusedApp",
         'name' : "Current Focused App",
         'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
-    }
+    },
 }
 
 TP_PLUGIN_CONNECTORS = {
     "APP control": {
+        'category': "main",
         "id": PLUGIN_ID + ".connector.APPcontrol",
         "name": "Volume Mixer: APP Volume slider",
         "format": "Control volume for $[1]",
@@ -70,6 +71,7 @@ TP_PLUGIN_CONNECTORS = {
         }
     },
     "Windows Audio": {
+        'category': "main",
         "id": PLUGIN_ID + ".connector.WinAudio",
         "name": "Volume Mixer: Windows Volume slider",
         "format": "Control Windows Audio$[1] device$[2]",
