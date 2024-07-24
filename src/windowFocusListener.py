@@ -128,10 +128,10 @@ class WindowFocusListener:
             self.last_volume = volume_int
 
 
-# if __name__ == "__main__":
-#     listener = WindowFocusListener()
-#     try:
-#         listener.start()
-#         input("Press Enter to stop...")
-#     finally:
-#         listener.stop()
+if __name__ == "__main__":
+    listener = WindowFocusListener()
+    try:
+        listener.start()
+        input("Press Enter to stop...")
+    finally:
+        listener.stop()

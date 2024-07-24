@@ -35,6 +35,21 @@ TP_PLUGIN_CATEGORIES = {
         'id': PLUGIN_ID + ".main",
         'name' : "Windows Media Mixer",
         'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
+    },
+    "Default Input Devices": {
+        'id': PLUGIN_ID + ".inputDevices",
+        'name' : "Windows Media Mixer",
+        'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
+    },
+    "Default Output Devices": {
+        'id': PLUGIN_ID + ".outputDevices",
+        'name' : "Windows Media Mixer",
+        'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
+    },
+    "Focused App": {
+        'id': PLUGIN_ID + ".focusedApp",
+        'name' : "Windows Media Mixer",
+        'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
     }
 }
 
@@ -85,7 +100,7 @@ TP_PLUGIN_ACTIONS = {
     'AppMute': {
         'category': "main",
         'id': PLUGIN_ID + ".act.Mute/Unmute",
-        'name': 'Volume Mixer: Mute/Unmute process volume',
+        'name': 'Mute/Unmute process volume',
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
@@ -315,73 +330,80 @@ TP_PLUGIN_ACTIONS = {
 
 TP_PLUGIN_STATES = {
     'outputDevice': {
-        'category': "main",
+        'category': "Default Output Devices",
         'id': PLUGIN_ID + ".state.CurrentOutputDevice",
         'type': "text",
         'desc': "Audio Device: Default Output Device",
         'default': ""
     },
     'outputDeviceCommunication': {
-        'category': "main",
+        'category': "Default Output Devices",
         'id': PLUGIN_ID + ".state.CurrentOutputCommicationDevice",
         'type': "text",
         'desc': "Audio Device: Default Output Communications Device",
         'default': ""
     },
     'inputDevice': {
-        'category': "main",
+        'category': "Default Input Devices",
         'id': PLUGIN_ID + ".state.CurrentInputDevice",
         'type': "text",
         'desc': "Audio Device: Default Input Device",
         'default': ""
     },
     'inputDeviceCommunication': {
-        'category': "main",
+        'category': "Default Input Devices",
         'id': PLUGIN_ID + ".state.CurrentInputCommucationDevice",
         'type': "text",
         'desc': "Audio Device: Default Input Communications Device",
         'default': ""
     },
+    'master volume': {
+        'category': "Default Output Devices",
+        'id': PLUGIN_ID + ".state.currentMasterVolume",
+        'type': "text",
+        'desc': "Volume Mixer: Master Output Volume",
+        'default': ""
+    },
+    'master volume mute': {
+        'category': "Default Output Devices",
+        'id': PLUGIN_ID + ".state.currentMasterVolumeMute",
+        'type': "text",
+        'desc': "Volume Mixer: Master Output Volume Mute",
+        'default': ""
+    },
+    'master volume input': {
+        'category': "Default Input Devices",
+        'id': PLUGIN_ID + ".state.currentInputMasterVolume",
+        'type': "text",
+        'desc': "Volume Mixer: Master Input Volume",
+        'default': ""
+    },
+    'master volume input mute': {
+        'category': "Default Input Devices",
+        'id': PLUGIN_ID + ".state.currentInputMasterVolumeMute",
+        'type': "text",
+        'desc': "Volume Mixer: Master Input Volume Mute",
+        'default': ""
+    },
     'FocusedAPP': {
-        'category': "main",
+        'category': "Focused App",
         'id': PLUGIN_ID + ".state.currentFocusedAPP",
         'type': "text",
         'desc': "Volume Mixer: Current Focused App",
         'default': ""
     },
     'currentAppVolume': {
-        'category': "main",
+        'category': "Focused App",
         'id': PLUGIN_ID + ".state.currentAppVolume",
         'type': "text",
         "desc": "Volume Mixer: Current Focused App volume",
         "default": ""
     },
-    'master volume': {
-        'category': "main",
-        'id': PLUGIN_ID + ".state.currentMasterVolume",
+    'currentAppMute': {
+        'category': "Focused App",
+        'id': PLUGIN_ID + ".state.currentAppMute",
         'type': "text",
-        'desc': "Volume Mixer: Master Output volume",
-        'default': ""
+        "desc": "Volume Mixer: Current Focused App Mute",
+        "default": ""
     },
-        'master volume mute': {
-        'category': "main",
-        'id': PLUGIN_ID + ".state.currentMasterVolumeMute",
-        'type': "text",
-        'desc': "Volume Mixer: Master Output volume mute",
-        'default': ""
-    },
-    'master volume input': {
-        'category': "main",
-        'id': PLUGIN_ID + ".state.currentInputMasterVolume",
-        'type': "text",
-        'desc': "Volume Mixer: Master Input volume",
-        'default': ""
-    },
-        'master volume input mute': {
-        'category': "main",
-        'id': PLUGIN_ID + ".state.currentInputMasterVolumeMute",
-        'type': "text",
-        'desc': "Volume Mixer: Master Input volume mute",
-        'default': ""
-    }
 }

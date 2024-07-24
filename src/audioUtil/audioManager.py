@@ -1,11 +1,9 @@
-import ctypes
-
+import time
 import comtypes
 from pycaw.constants import CLSID_MMDeviceEnumerator
 from pycaw.pycaw import (DEVICE_STATE, AudioUtilities, EDataFlow,
                          IMMDeviceEnumerator)
 
-from logging import getLogger
 import threading
 import pythoncom
 from pycaw.constants import EDataFlow, DEVICE_STATE, ERole
@@ -15,6 +13,7 @@ from ctypes import POINTER, cast
 from comtypes import CLSCTX_ALL, COMObject
 from pycaw.api.endpointvolume import IAudioEndpointVolumeCallback
 from pycaw.api.endpointvolume.depend import AUDIO_VOLUME_NOTIFICATION_DATA
+from logging import getLogger
 
 from tppEntry import TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, TP_PLUGIN_STATES, __version__
 from audioUtil import audioSwitch
@@ -427,52 +426,30 @@ class AudioDeviceNotificationHandler(MMNotificationClient):
 
 
     
-# audio_manager = AudioManager()
 
-# def main():
-#     # global audio_manager
-#     audio_manager = AudioManager()
-#     # Obtain a list of all devices
-#     audio_manager.outputDevices= audio_manager.getAllDevices(direction="output")
-#     audio_manager.inputDevices= audio_manager.getAllDevices(direction="input")
+def main():
+    # global audio_manager
+    audio_manager = AudioManager()
+    # Obtain a list of all devices
+    audio_manager.outputDevices= audio_manager.getAllDevices(direction="output")
+    audio_manager.inputDevices= audio_manager.getAllDevices(direction="input")
     
-#     outputDevices = {v: k for k, v in audio_manager.outputDevices.items()} 
-#     inputDevices = {v: k for k, v in audio_manager.inputDevices.items()} 
+    outputDevices = {v: k for k, v in audio_manager.outputDevices.items()} 
+    inputDevices = {v: k for k, v in audio_manager.inputDevices.items()} 
     
-#     audio_manager.outputDevices = outputDevices
-#     audio_manager.inputDevices = inputDevices
-    
-#     # audio_manager.outputDevices = all_devices
-    
-#     # # Print the devices to choose one
-#     # g_log.info("Available output devices:")
-#     # for friendly_name, device_id in all_devices.items():
-#     #     g_log.info(f"Device: {friendly_name}, ID: {device_id}")
+    audio_manager.outputDevices = outputDevices
+    audio_manager.inputDevices = inputDevices
 
-#     # # Example: Register a specific device by its ID
-#     # selected_device_id = input("Enter the ID of the device you want to register: ")
-#     # if selected_device_id in all_devices.values():
-#     #     audio_manager.register_single_device(selected_device_id)
-#     # else:
-#     #     g_log.info("Invalid device ID.")
-        
-#     # # Example: Register a specific device by its ID
-#     # selected_device_id = input("Enter the ID of the device you want to register: ")
-#     # if selected_device_id in all_devices.values():
-#     #     audio_manager.register_single_device(selected_device_id)
-#     # else:
-#     #     g_log.info("Invalid device ID.")
+    try:
+        audio_manager.start_listening()
+        g_log.info("Listening for volume and device changes... Press Ctrl+C to exit.")
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        g_log.info("Exiting...")
+    finally:
+        audio_manager.stop_listening()
 
-#     try:
-#         audio_manager.start_listening()
-#         g_log.info("Listening for volume and device changes... Press Ctrl+C to exit.")
-#         while True:
-#             time.sleep(1)
-#     except KeyboardInterrupt:
-#         g_log.info("Exiting...")
-#     finally:
-#         audio_manager.stop_listening()
-
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
 

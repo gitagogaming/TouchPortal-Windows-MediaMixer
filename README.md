@@ -89,10 +89,10 @@ Have you ever wondering if theres a way to easily control Windows Volume Mixer w
 ## Action
 ![Action List](images/actions.png)
 
-- Volume Mixer: Mute/Unmute process volume
+- Mute/Unmute process volume
     - This allows you to Toggle/Mute/Unmute any program you pick.
 - Adjust App Volume
-    - It allows you to Increase/Decrease/Set any application Volume
+    - It allows you to Increase/Decrease/Set/Mute any application Volume
 - Audio Output/Input Device Switcher
     - This allows you to change global default or communication audio device.
 - Audio Output/Input Device Toggle
@@ -106,27 +106,30 @@ Have you ever wondering if theres a way to easily control Windows Volume Mixer w
 ![State list](images/states.png)
 ![Audio state](images/AudioDevice.png)
 
-This plugin will create for each application
 - appname.exe Mute state
    - This gives `Muted` or `Un-muted` depends on application
 - is appname.exe Active
     - This gives `True` or `False` It will show `True` if application is playing sound
 - appname.exe Volume
     - This shows this application's volume
-- Audio Device: Get default Output devices
+- Audio Device: Default Output Device
     - This shows your current Default output device
-- Audio Device: Get default Output communication devices
-    - This shows your Default output communication device
-- Audio Device: Get default input device
+- Audio Device: Default Output Communication Device
+    - This shows your current Default output communication device
+- Audio Device: Default Input Device
     - This shows your default input device
-- Audio Device: Get default input communication device
+- Audio Device: Default Input Communication Device
     - This shows your default input communication device
-- Volume Mixer: current focused app
-    - This gives you current focused app
+- Volume Mixer: Current Focused App
+    - This gives you current focused app's name, volume & mute states
 - Volume Mixer: Get Current Master Volume
-    - shows current master volume via states ranging 0-100
-- Volume Mixer: focused app volume
+    - shows current master output volume via states ranging 0-100
+- Volume Mixer: Get Current Master Input Volume
+    - shows current master input volume via states ranging 0-100
+- Volume Mixer: Focused App Volume
     - shows current focused app volume as a state.
+- Volume Mixer: Focused App Mute
+    - shows current focused app Mute as a state.
 
 ### Slider
 
@@ -134,6 +137,8 @@ This plugin also includes slider functionality. to use this feature simply chang
 - Volume Mixer: APP Volume slider
     - when button type is slider, you have ability to change selected app volume
      using slider also includes Current app (controls volume on whatever is on focus) and control master volume too! 
+- Volume Mixer: Default Audio Device Slider
+    - Adjust the volume of your default input/output devices using sliders.
 
 # Versioning
 
