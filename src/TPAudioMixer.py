@@ -121,7 +121,6 @@ class AppAudioCallBack(MagicSession):
 
         # ______________ DISPLAY NAME ______________
         self.app_name = self.magic_root_session.app_exec
-        #g_log.info(f":: new session: {self.app_name}")
         
         if self.app_name not in volumeprocess.audio_ignore_list:
             # set initial:
@@ -187,7 +186,7 @@ class AppAudioCallBack(MagicSession):
 
 
 
-def updateDevice(options, choiceId, instanceId=None):
+def updateDeviceChoices(options, choiceId, instanceId=None):
     deviceList = list(audioSwitch.MyAudioUtilities.getAllDevices(options).keys())
     if (choiceId == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"] or \
             choiceId == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"] or \
@@ -476,42 +475,42 @@ def onListChange(data):
     if data['actionId'] == TP_PLUGIN_ACTIONS["ChangeOut/Input"]['id'] and \
         data['listId'] == TP_PLUGIN_ACTIONS["ChangeOut/Input"]["data"]["optionSel"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["ChangeOut/Input"]['data']['deviceOption']['id'], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["ChangeOut/Input"]['data']['deviceOption']['id'], data['instanceId'])
         except Exception as e:
             g_log.info("Update device input/output KeyError: " + str(e))
     elif data['actionId'] == TP_PLUGIN_ACTIONS["ToggleOut/Input"]['id'] and \
         data['listId'] == TP_PLUGIN_ACTIONS["ToggleOut/Input"]["data"]["optionSel"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["ToggleOut/Input"]['data']['deviceOption1']['id'], data['instanceId'])
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["ToggleOut/Input"]['data']['deviceOption2']['id'], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["ToggleOut/Input"]['data']['deviceOption1']['id'], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["ToggleOut/Input"]['data']['deviceOption2']['id'], data['instanceId'])
         except Exception as e:
             g_log.info("Update device input/output KeyError: " + str(e))
     elif data['actionId'] == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["id"] and \
         data["listId"] == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["deviceType"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"], data['instanceId'])
         except Exception as e:
             g_log.info("Update device input/output KeyError: " + str(e))
     
     elif data['actionId'] == TP_PLUGIN_ACTIONS["setDeviceVolume"]["id"] and \
         data["listId"] == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceType"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
             g_log.info("Update device setDeviceVolume error " + str(e))
     
     elif data['actionId'] == TP_PLUGIN_ACTIONS["setDeviceMute"]["id"] and \
         data["listId"] == TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceType"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceOption"]["id"], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
             g_log.info("Update device setDeviceVolume error " + str(e))
     
-    ## left this the same, but it could be modified a bit.. atleast the UpdateDevice func so it retrieves from audio_controller
+    ## left this the same, but it could be modified a bit.. atleast the updateDeviceChoices func so it retrieves from audio_controller
     elif data['actionId'] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"] and \
         data["listId"] == TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceType"]["id"]:
         try:
-            updateDevice(data['value'], TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceOption"]["id"], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
             g_log.warning("Update device Windows Audio error " + str(e))
 

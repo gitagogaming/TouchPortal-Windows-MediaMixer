@@ -8,11 +8,12 @@ import psutil
 from pycaw.pycaw import AudioUtilities
 from logging import getLogger
 from tppEntry import TP_PLUGIN_STATES, TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, __version__
+import TouchPortalAPI as TP
 
 g_log = getLogger(__name__)
 
 class WindowFocusListener:
-    def __init__(self, TPClient):
+    def __init__(self, TPClient:TP.Client):
         self.hook = None
         self.win_event_proc = None
         self.running = False

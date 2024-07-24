@@ -441,11 +441,16 @@ class AudioDeviceNotificationHandler(MMNotificationClient):
             threading.Thread(target=self.setup_default_device).start()
 
     def OnDeviceStateChanged(self, pwstrDeviceId, dwNewState):
-        g_log.info(f"Device state changed: {pwstrDeviceId} {dwNewState}")
+        g_log.debug(f"Device state changed: {pwstrDeviceId} {dwNewState}")
 
     def OnPropertyValueChanged(self, pwstrDeviceId, key):
-        g_log.info(f"Property value changed: device={pwstrDeviceId} key={key}")
+        g_log.debug(f"Property value changed: device={pwstrDeviceId} key={key}")
 
+    def OnDeviceAdded(self, added_device_id):
+        g_log.debug(f"New Device Found! {added_device_id}")
+    
+    def OnDeviceRemoved(self, added_device_id):
+        g_log.debug(f"Device Removed! {added_device_id}")
 
     
 
