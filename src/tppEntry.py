@@ -38,17 +38,17 @@ TP_PLUGIN_CATEGORIES = {
     },
     "Default Input Devices": {
         'id': PLUGIN_ID + ".inputDevices",
-        'name' : "Windows Media Mixer",
+        'name' : "Default Input Devices",
         'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
     },
     "Default Output Devices": {
         'id': PLUGIN_ID + ".outputDevices",
-        'name' : "Windows Media Mixer",
+        'name' : "Default Output Devices",
         'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
     },
     "Focused App": {
         'id': PLUGIN_ID + ".focusedApp",
-        'name' : "Windows Media Mixer",
+        'name' : "Current Focused App",
         'imagepath' : "%TP_PLUGIN_FOLDER%TouchPortalMediaMixer\\icon.png"
     }
 }
@@ -286,6 +286,46 @@ TP_PLUGIN_ACTIONS = {
                 'type': "text",
                 'label': "Volume",
                 "default": "10"
+            },
+        }
+    },
+    'setDeviceMute': {
+        'category': "main",
+        'id': PLUGIN_ID + ".act.changeDeviceMute",
+        'name': 'Set Device Mute',
+        'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
+        'type': "communicate",
+        'tryInline': True,
+        'format': "Set Mute$[1]device$[2]to$[3]",
+        "doc": "Change Default Audio Devices",
+        'data': {
+            'deviceType': {
+                'id': PLUGIN_ID + ".act.changeDeviceMute.deviceType",
+                'type': "choice",
+                'label': "device type",
+                'default': "Pick One",
+                "valueChoices": [
+                    "Output",
+                    "Input"
+                ]
+            },
+            'deviceOption': {
+                'id': PLUGIN_ID + ".act.changeDeviceMute.devices",
+                'type': "choice",
+                'label': "Device choice list",
+                'default': "",
+                "valueChoices": []
+            },
+            'muteChoice': {
+                'id': PLUGIN_ID + ".act.changeDeviceMute.choices",
+                'type': "choice",
+                'label': "Volume",
+                "default": "Toggle",
+                "valueChoices": [
+                    "Toggle",
+                    "Mute",
+                    "Un-Mute"
+                ]
             },
         }
     },

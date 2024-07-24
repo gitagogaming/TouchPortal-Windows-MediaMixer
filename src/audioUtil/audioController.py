@@ -1,11 +1,11 @@
-from ctypes import POINTER, cast
+# from ctypes import POINTER, cast
 
-import comtypes
+# import comtypes
 import pythoncom
-from comtypes import CLSCTX_ALL
-from pycaw.constants import CLSID_MMDeviceEnumerator
-from pycaw.pycaw import (AudioUtilities, EDataFlow, IAudioEndpointVolume,
-                         IMMDeviceEnumerator)
+# from comtypes import CLSCTX_ALL
+# from pycaw.constants import CLSID_MMDeviceEnumerator
+from pycaw.pycaw import AudioUtilities #, EDataFlow, IAudioEndpointVolume,
+                         #IMMDeviceEnumerator)
 
 class AudioController:
     def __init__(self, process_name):
@@ -63,8 +63,15 @@ class AudioController:
             self.volume = new_volume
 
 
+def get_process_id(name):
+    sessions = AudioUtilities.GetAllSessions()
+    for session in sessions:
+        if session.Process and session.Process.name() == name:
+            return session.Process.pid
+    return None
+
 def muteAndUnMute(process, value):
-    pythoncom.CoInitialize()
+    # pythoncom.CoInitialize()
     sessions = AudioUtilities.GetAllSessions() ## why do we get all sessions again if done previously? why not keep track of sessions
     for session in sessions:
         volume = session.SimpleAudioVolume
@@ -79,14 +86,7 @@ def muteAndUnMute(process, value):
 
 
 def volumeChanger(process, action, value):
-    # pythoncom.CoInitialize() // this is done when creating the audicontroller object
-    if process == "Master Volume":
-        if action == "Set":
-            setMasterVolume(value)
-        else:
-            value = +value if action == "Increase" else -value
-            setMasterVolume(100 if (master_vol := getMasterVolume() + value) and master_vol > 100 else master_vol)
-    elif action == "Set":
+    if action == "Set":
         AudioController(str(process)).set_volume((int(value)*0.01))
     elif action == "Increase":
         AudioController(str(process)).increase_volume((int(value)*0.01))
@@ -95,69 +95,81 @@ def volumeChanger(process, action, value):
         AudioController(str(process)).decrease_volume((int(value)*0.01))
 
 
-def setMasterVolume(Vol):
-    pythoncom.CoInitialize()
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(
-        IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    volume = cast(interface, POINTER(IAudioEndpointVolume))
-    scalarVolume = int(Vol) / 100
-    volume.SetMasterVolumeLevelScalar(scalarVolume, None)
 
-def getMasterVolume() -> int:
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+# def volumeChanger(process, action, value):
+#     # pythoncom.CoInitialize() // this is done when creating the audicontroller object
+#     if process == "Master Volume":
+#         if action == "Set":
+#             setMasterVolume(value)
+#         else:
+#             value = +value if action == "Increase" else -value
+#             setMasterVolume(100 if (master_vol := getMasterVolume() + value) and master_vol > 100 else master_vol)
+#     if action == "Set":
+#         AudioController(str(process)).set_volume((int(value)*0.01))
+#     elif action == "Increase":
+#         AudioController(str(process)).increase_volume((int(value)*0.01))
 
-    # Get the volume range and current volume level
-    volume = interface.QueryInterface(IAudioEndpointVolume)
-    volume_percent = int(round(volume.GetMasterVolumeLevelScalar() * 100))
+#     elif action == "Decrease":
+#         AudioController(str(process)).decrease_volume((int(value)*0.01))
 
-    devices.Release()
-    # Release the interface COM object
-    comtypes.CoUninitialize()
-    return volume_percent
 
-def getDeviceObject(device_id, direction="Output"):
-    deviceEnumerator = comtypes.CoCreateInstance(
-            CLSID_MMDeviceEnumerator,
-            IMMDeviceEnumerator,
-            comtypes.CLSCTX_INPROC_SERVER)
+# def setMasterVolume(Vol):
+#     pythoncom.CoInitialize()
+#     devices = AudioUtilities.GetSpeakers()
+#     interface = devices.Activate(
+#         IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+#     volume = cast(interface, POINTER(IAudioEndpointVolume))
+#     scalarVolume = int(Vol) / 100
+#     volume.SetMasterVolumeLevelScalar(scalarVolume, None)
+
+# def getMasterVolume() -> int:
+#     devices = AudioUtilities.GetSpeakers()
+#     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+
+#     # Get the volume range and current volume level
+#     volume = interface.QueryInterface(IAudioEndpointVolume)
+#     volume_percent = int(round(volume.GetMasterVolumeLevelScalar() * 100))
+
+#     devices.Release()
+#     # Release the interface COM object
+#     comtypes.CoUninitialize()
+#     return volume_percent
+
+# def getDeviceObject(device_id, direction="Output"):
+#     deviceEnumerator = comtypes.CoCreateInstance(
+#             CLSID_MMDeviceEnumerator,
+#             IMMDeviceEnumerator,
+#             comtypes.CLSCTX_INPROC_SERVER)
     
-    if deviceEnumerator is None: return None
+#     if deviceEnumerator is None: return None
 
-    flow = EDataFlow.eCapture.value
-    if direction.lower() == "output":
-        flow = EDataFlow.eRender.value
+#     flow = EDataFlow.eCapture.value
+#     if direction.lower() == "output":
+#         flow = EDataFlow.eRender.value
 
-    devices = deviceEnumerator.EnumAudioEndpoints(flow, 1)
+#     devices = deviceEnumerator.EnumAudioEndpoints(flow, 1)
 
-    for dev in devices:
-        if dev.GetId() == device_id:
-            return dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+#     for dev in devices:
+#         if dev.GetId() == device_id:
+#             return dev.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     
-    return None
+#     return None
     
-def setDeviceVolume(device_id, direction, volume_level):
-    pythoncom.CoInitialize()
-    if device_id == "default":
-        if direction.lower() == "output":
-            device = AudioUtilities.GetSpeakers()
-        else:
-            device = AudioUtilities.GetMicrophone()
-        device_object = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    else:
-        device_object = getDeviceObject(device_id, direction)
+# def setDeviceVolume(device_id, direction, volume_level):
+#     pythoncom.CoInitialize()
+#     if device_id == "default":
+#         if direction.lower() == "output":
+#             device = AudioUtilities.GetSpeakers()
+#         else:
+#             device = AudioUtilities.GetMicrophone()
+#         device_object = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+#     else:
+#         device_object = getDeviceObject(device_id, direction)
 
-    if device_object:
-        volume = cast(device_object, POINTER(IAudioEndpointVolume))
-        scalar_volume = float(volume_level) / 100
-        volume.SetMasterVolumeLevelScalar(scalar_volume, None)
+#     if device_object:
+#         volume = cast(device_object, POINTER(IAudioEndpointVolume))
+#         scalar_volume = float(volume_level) / 100
+#         volume.SetMasterVolumeLevelScalar(scalar_volume, None)
 
-    pythoncom.CoUninitialize()
+#     pythoncom.CoUninitialize()
 
-def get_process_id(name):
-    sessions = AudioUtilities.GetAllSessions()
-    for session in sessions:
-        if session.Process and session.Process.name() == name:
-            return session.Process.pid
-    return None

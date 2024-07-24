@@ -126,8 +126,8 @@ class AudioManager:
     Attributes:
         devices (dict): Stores devices by ID with their volume and callback.
         device_change_client (Client): Client for handling device change notifications.
-        inputDevices (dict): Stores input devices with device names and IDs.
-        outputDevices (dict): Stores output devices with device names and IDs.
+        inputDevicesReversed (dict): Stores input devices with device names and IDs.
+        outputDevicesReversed (dict): Stores output devices with device names and IDs.
 
     Methods:
         create_callback_for_device(device, device_type, device_name, device_id):
@@ -163,8 +163,8 @@ class AudioManager:
         self.device_change_client:AudioDeviceNotificationHandler = None
         self.TPClient:TP.Client = TPClient
         
-        self.inputDevices = {}
-        self.outputDevices = {}
+        self.inputDevicesReversed = {}
+        self.outputDevicesReversed = {}
 
     def create_callback_for_device(self, device, device_type, device_name, device_id):
         try:
@@ -217,13 +217,13 @@ class AudioManager:
 
                 if state == DEVICE_STATE.ACTIVE.value:
                     if data_flow == EDataFlow.eRender:
-                        device_name = self.outputDevices.get(device_id, "None")
+                        device_name = self.outputDevicesReversed.get(device_id, "None")
                         volume, callback = self.create_callback_for_device(device, "output", device_name, device_id)
                         if volume and callback:
                             device_list.append((device_id, volume, callback))
                             g_log.info(f"Callback registered for 'output' device: {device_name} {device_id}")
                     elif data_flow == EDataFlow.eCapture:
-                        device_name = self.inputDevices.get(device_id, "None")
+                        device_name = self.inputDevicesReversed.get(device_id, "None")
                         volume, callback = self.create_callback_for_device(device, "input", device_name, device_id)
                         if volume and callback:
                             device_list.append((device_id, volume, callback))
@@ -273,13 +273,35 @@ class AudioManager:
         self.unregister_all_devices()
     
     def fetch_devices(self):
-        """ Returns inputDevices, outputDevices"""
-        outputDevices= audioSwitch.MyAudioUtilities.getAllDevices(direction="output")
-        inputDevices= audioSwitch.MyAudioUtilities.getAllDevices(direction="input")
-        self.outputDevices = {v: k for k, v in outputDevices.items()} 
-        self.inputDevices = {v: k for k, v in inputDevices.items()}
-        return inputDevices.keys(), outputDevices.keys()
-         
+        """ Returns inputDevicesReversed, outputDevicesReversed"""
+        self.outputDevices = audioSwitch.MyAudioUtilities.getAllDevices(direction="output")
+        self.inputDevices  = audioSwitch.MyAudioUtilities.getAllDevices(direction="input")
+        
+        self.outputDevicesReversed = {v: k for k, v in self.outputDevices.items()} 
+        self.inputDevicesReversed = {v: k for k, v in self.inputDevices.items()}
+        return self.inputDevicesReversed.keys(), self.outputDevicesReversed.keys()
+        
+    def getDeviceByName(self, name, device_type):
+        """Retrieve the volume object for the selected device
+        - returns volume object, deviceid
+        """
+        if device_type == "Output":
+            if name == "Default":
+                deviceid = self.device_change_client.defaultOutputDeviceID
+                volume, _ = self.devices.get(deviceid, (None, None))
+            else:
+                deviceid = self.outputDevices.get(name)
+                volume, _ = self.devices.get(deviceid, (None, None))
+
+        if device_type == "Input":
+            if name == "Default": 
+                deviceid = self.device_change_client.defaultInputDeviceID
+                volume, _ = self.devices.get(deviceid, (None, None))
+            else:
+                deviceid = self.inputDevices.get(name)
+                volume, _ = self.devices.get(deviceid, (None, None))
+
+        return volume, deviceid
     # def initialize_default_devices(self):
     #     """ 
     #     When starting up we fetch the default input/output devices 
@@ -307,7 +329,7 @@ class AudioManager:
     #             attr_name = f"default{device_key.capitalize()}"
     #             setattr(self.device_change_client, attr_name, device_id)
 
-    #             device_dict = self.outputDevices if 'output' in device_key.lower() else self.inputDevices
+    #             device_dict = self.outputDevicesReversed if 'output' in device_key.lower() else self.inputDevicesReversed
     #             state_key = "outputDeviceCommunication" if device_key == "outputCommunicationDevice" else device_key
     #             TPClient.stateUpdate(TP_PLUGIN_STATES[state_key]["id"], device_dict.get(device_id, "Unknown"))
 
@@ -359,10 +381,10 @@ class AudioManager:
             self.device_change_client.defaultInputCommunicationDeviceID = get_default_device_id(device_map['inputCommunicationDevice']['edata'], device_map['inputCommunicationDevice']['erole'])
 
             # Update states
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.outputDevices.get(self.device_change_client.defaultOutputDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.outputDevices.get(self.device_change_client.defaultOutputCommunicationDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.inputDevices.get(self.device_change_client.defaultInputDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.inputDevices.get(self.device_change_client.defaultInputCommunicationDeviceID, "Unknown"))
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.outputDevicesReversed.get(self.device_change_client.defaultOutputDeviceID, "Unknown"))
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.outputDevicesReversed.get(self.device_change_client.defaultOutputCommunicationDeviceID, "Unknown"))
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown"))
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputCommunicationDeviceID, "Unknown"))
 
             # Log the device IDs
             g_log.info(f"Default output device ID: {self.device_change_client.defaultOutputDeviceID}")
@@ -402,17 +424,17 @@ class AudioDeviceNotificationHandler(MMNotificationClient):
         if flow == EDataFlow.eRender.value:
             if role == ERole.eCommunications.value:
                 self.defaultOutputCommunicationDeviceID  = pwstrDeviceId
-                self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.audio_manager.outputDevices.get(self.defaultOutputCommunicationDeviceID, "Unknown"))
+                self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.audio_manager.outputDevicesReversed.get(self.defaultOutputCommunicationDeviceID, "Unknown"))
             else:
                 self.defaultOutputDeviceID = pwstrDeviceId
-                self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.audio_manager.outputDevices.get(self.defaultOutputDeviceID, "Unknown"))
+                self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.audio_manager.outputDevicesReversed.get(self.defaultOutputDeviceID, "Unknown"))
         elif flow == EDataFlow.eCapture.value:
             if role == ERole.eCommunications.value:
                 self.defaultInputCommunicationDeviceID = pwstrDeviceId
-                self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.audio_manager.inputDevices.get(self.defaultInputCommunicationDeviceID, "Unknown"))
+                self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.audio_manager.inputDevicesReversed.get(self.defaultInputCommunicationDeviceID, "Unknown"))
             else:
                 self.defaultInputDeviceID = pwstrDeviceId
-                self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.audio_manager.inputDevices.get(self.defaultInputDeviceID, "Unknown"))
+                self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.audio_manager.inputDevicesReversed.get(self.defaultInputDeviceID, "Unknown"))
         
         ## starting new new listeners for the new default device
         if flow == EDataFlow.eRender.value or flow == EDataFlow.eCapture.value:
@@ -431,14 +453,14 @@ def main():
     # global audio_manager
     audio_manager = AudioManager()
     # Obtain a list of all devices
-    audio_manager.outputDevices= audio_manager.getAllDevices(direction="output")
-    audio_manager.inputDevices= audio_manager.getAllDevices(direction="input")
+    audio_manager.outputDevicesReversed= audio_manager.getAllDevices(direction="output")
+    audio_manager.inputDevicesReversed= audio_manager.getAllDevices(direction="input")
     
-    outputDevices = {v: k for k, v in audio_manager.outputDevices.items()} 
-    inputDevices = {v: k for k, v in audio_manager.inputDevices.items()} 
+    outputDevicesReversed = {v: k for k, v in audio_manager.outputDevicesReversed.items()} 
+    inputDevicesReversed = {v: k for k, v in audio_manager.inputDevicesReversed.items()} 
     
-    audio_manager.outputDevices = outputDevices
-    audio_manager.inputDevices = inputDevices
+    audio_manager.outputDevicesReversed = outputDevicesReversed
+    audio_manager.inputDevicesReversed = inputDevicesReversed
 
     try:
         audio_manager.start_listening()
