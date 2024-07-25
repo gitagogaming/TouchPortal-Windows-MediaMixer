@@ -1,10 +1,8 @@
 import win32gui
 import win32con
-import win32process
 import ctypes
 import threading
 import os
-import psutil
 from pycaw.pycaw import AudioUtilities
 from logging import getLogger
 
@@ -22,9 +20,7 @@ class WindowFocusListener:
         self.thread = None
         
         self.TPClient = TPClient
-        self.TP_PLUGIN_STATES = TP_PLUGIN_STATES
         self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-       
         self.current_focused_exe_path = ""
         self.last_volume = None
 
@@ -126,7 +122,7 @@ class WindowFocusListener:
                     self.TPClient.shortIdTracker[self.current_app_connector_id],
                     volume_int
                 )
-            self.TPClient.stateUpdate(self.TP_PLUGIN_STATES['currentAppVolume']['id'], str(volume_int))
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(volume_int))
             self.last_volume = volume_int
 
 

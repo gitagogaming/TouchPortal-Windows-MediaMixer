@@ -263,7 +263,8 @@ TP_PLUGIN_ACTIONS = {
         'prefix': TP_PLUGIN_CATEGORIES['main']['name'],
         'type': "communicate",
         'tryInline': True,
-        'format': "Set Volume$[1]device$[2]to$[3]%",
+        'format': "$[4] Volume$[1]device$[2]to$[3]%",
+        "hasHoldFunctionality": True,
         "doc": "Change Default Audio Devices",
         'data': {
             'deviceType': {
@@ -288,6 +289,17 @@ TP_PLUGIN_ACTIONS = {
                 'type': "text",
                 'label': "Volume",
                 "default": "10"
+            },
+            'OptionList': {
+                'id': PLUGIN_ID + ".act.changeDeviceVolume.choice",
+                'type': "choice",
+                'label': "Option choice",
+                'default': "Increase",
+                "valueChoices": [
+                    "Increase",
+                    "Decrease",
+                    "Set"
+                ]
             },
         }
     },

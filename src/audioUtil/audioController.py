@@ -1,11 +1,5 @@
-# from ctypes import POINTER, cast
-
-# import comtypes
 import pythoncom
-# from comtypes import CLSCTX_ALL
-# from pycaw.constants import CLSID_MMDeviceEnumerator
-from pycaw.pycaw import AudioUtilities #, EDataFlow, IAudioEndpointVolume,
-                         #IMMDeviceEnumerator)
+from pycaw.pycaw import AudioUtilities
 from logging import getLogger
 
 g_log = getLogger(__name__)
@@ -97,15 +91,37 @@ def volumeChanger(process, action, value):
     elif action == "Decrease":
         AudioController(str(process)).decrease_volume((int(value)*0.01))
 
-def setDeviceVolume(device, deviceid, value):
+def setDeviceVolume(device, deviceid, value,  action = "Set"):
+    if device is None:
+        g_log.info(f"Device {deviceid} not found in audio_manager.devices.")
+        return
+    
     volume_scalar = value / 100.0
     
-        
-    # Check if the volume object exists and set the master volume level
-    if device:
-        device.SetMasterVolumeLevelScalar(volume_scalar, None)
+    if action == "Set":
+        new_volume = volume_scalar
+    elif action == "Increase":
+        current_volume = device.GetMasterVolumeLevelScalar()
+        new_volume = min(current_volume + volume_scalar, 1.0)
+    elif action == "Decrease":
+        current_volume = device.GetMasterVolumeLevelScalar()
+        new_volume = max(current_volume - volume_scalar, 0.0)
     else:
-        g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+        g_log.info(f"Unknown action {action}")
+        return
+
+    device.SetMasterVolumeLevelScalar(new_volume, None)
+    g_log.info(f"Device {deviceid} volume {action.lower()}d to {new_volume * 100:.2f}%")
+
+# def setDeviceVolume(device, deviceid, value):
+#     volume_scalar = value / 100.0
+    
+        
+#     # Check if the volume object exists and set the master volume level
+#     if device:
+#         device.SetMasterVolumeLevelScalar(volume_scalar, None)
+#     else:
+#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
 def setDeviceMute(device, deviceid, mute_choice)  :
             

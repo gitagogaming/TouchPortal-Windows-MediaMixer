@@ -171,15 +171,14 @@ def onAction(data):
 
     # For Apps
     elif actionid == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["id"] and action_data[2]["value"] != "Pick One":
-        deviceId = ""
-        if (action_data[1]["value"] != "Default"):
-            deviceId = audioSwitch.MyAudioUtilities.getAllDevices(action_data[2]["value"])
-            deviceId = deviceId.get(action_data[1]["value"])
-
-        if ((processid := get_process_id(action_data[0]['value'])) != None):
-            g_log.info(f"args devId: {deviceId}, processId: {processid}")
-            if (deviceId == "" and action_data[1]["value"] == "Default") or deviceId:
-                audioSwitch.SetApplicationEndpoint(deviceId, 1 if action_data[2]["value"] == "Input" else 0, processid)
+        name = action_data[1]["value"]
+        device_type = action_data[2]["value"]
+        device, deviceId = audio_manager.getDeviceByName(name, device_type)
+        if device:
+            if ((processid := get_process_id(action_data[0]['value'])) != None):
+                g_log.info(f"args devId: {deviceId}, processId: {processid}")
+                if (deviceId == "" and action_data[1]["value"] == "Default") or deviceId:
+                    audioSwitch.SetApplicationEndpoint(deviceId, 1 if action_data[2]["value"] == "Input" else 0, processid)
 
     # For Devices
     elif actionid == TP_PLUGIN_ACTIONS["setDeviceVolume"]["id"] and action_data[0]["value"] != "Pick One":
@@ -187,8 +186,8 @@ def onAction(data):
         name = action_data[1]['value']
         volume_value = float(action_data[2]['value'])
         device, deviceid = audio_manager.getDeviceByName(name, device_type)
-
-        setDeviceVolume(device, deviceid, volume_value)
+        if device:
+            setDeviceVolume(device, deviceid, volume_value)
     
     # For Devices        
     elif actionid == TP_PLUGIN_ACTIONS["setDeviceMute"]["id"] and action_data[0]["value"] != "Pick One":
@@ -196,22 +195,33 @@ def onAction(data):
         name = action_data[1]['value']
         mute_choice = action_data[2]['value']
         device, deviceid = audio_manager.getDeviceByName(name, device_type)
-
-        setDeviceMute(device, deviceid, mute_choice)
+        if device:
+            setDeviceMute(device, deviceid, mute_choice)
         
     else:
         g_log.warning("Got unknown action ID: " + actionid)
 
-### Needs fixed with new stuff...
+### Need to add onhold device volume control
 @TPClient.on(TP.TYPES.onHold_down)
 def heldingButton(data):
     g_log.debug(f"heldingButton: {data}")
     while True:
+        sleep(0.10)
         if TPClient.isActionBeingHeld(TP_PLUGIN_ACTIONS['Inc/DecrVol']['id']):
             volume_value = int(data['data'][2]['value'])
             volume_value = max(0, min(volume_value, 100))
             volumeChanger(data['data'][0]['value'], data['data'][1]['value'], volume_value)
-            sleep(0.05)
+            
+        elif TPClient.isActionBeingHeld(TP_PLUGIN_ACTIONS['setDeviceVolume']['id']):
+            device_type = data['data'][0]['value']
+            name = data['data'][1]['value']
+            volume_value = int(data['data'][2]['value'])
+            volume_value = max(0, min(volume_value, 100))
+            action = data['data'][3]['value']
+            device, deviceid = audio_manager.getDeviceByName(name, device_type)
+            if device:
+                setDeviceVolume(device, deviceid, volume_value, action)
+            
         else:
             break
     g_log.debug(f"Not helding button {data}")
@@ -224,24 +234,22 @@ def connectors(data):
     if data['connectorId'] == TP_PLUGIN_CONNECTORS["APP control"]['id']:
         if data['data'][0]['value'] == "Master Volume":
             # maintaining backwards compatible with old plugin actions...
-            # this was originally in the 'app' connector.. ask KB why
+            #    this was originally in the 'app' connector.. ask KB why
             device_type = "Output"
             name = "Default"
-
             slider_value = float(data['value'])
-            volume_scalar = slider_value / 100.0
-
+            volume_value = max(0, min(slider_value, 100))
             device, deviceid = audio_manager.getDeviceByName(name, device_type)
-
+            
             # Check if the volume object exists and set the master volume level
             if device:
-                device.SetMasterVolumeLevelScalar(volume_scalar, None)
+                setDeviceVolume(device, deviceid, volume_value)
             else:
                 g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
                 
         elif data['data'][0]['value'] == "Current app":
             activeWindow = listener.get_app_path()
-            
+
             if activeWindow != "":
                 volumeChanger(os.path.basename(activeWindow), "Set", data['value'])
         else:
@@ -255,39 +263,12 @@ def connectors(data):
         device_type = data['data'][0]['value']
         name = data['data'][1]['value']
         slider_value = float(data['value'])
-        
         device, deviceid = audio_manager.getDeviceByName(name, device_type)
-
-        setDeviceVolume(device, deviceid, slider_value)
-
-            
-# def setDeviceVolume(device_type, name, value):
-#     volume_scalar = value / 100.0
-    
-#     device, deviceid = audio_manager.getDeviceByName(name, device_type)
         
-#     # Check if the volume object exists and set the master volume level
-#     if device:
-#         device.SetMasterVolumeLevelScalar(volume_scalar, None)
-#     else:
-#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+        if device:
+            setDeviceVolume(device, deviceid, slider_value)
 
-# def setDeviceMute(device_type, name, mute_choice)  :
-#     device, deviceid = audio_manager.getDeviceByName(name, device_type)
-            
-#     # Check if the volume object exists and set the master volume level
-#     if device:
-#         if mute_choice == "Toggle":
-#             current_mute_state = device.GetMute()
-#             new_mute_state = not current_mute_state
-#         elif mute_choice == "Mute":
-#             new_mute_state = 1
-#         elif mute_choice == "Un-Mute":
-#             new_mute_state = 0
-            
-#         device.SetMute(new_mute_state, None)
-#     else:
-#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+
 
 @TPClient.on(TP.TYPES.onListChange)
 def onListChange(data):
@@ -298,6 +279,7 @@ def onListChange(data):
             updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["ChangeOut/Input"]['data']['deviceOption']['id'], data['instanceId'])
         except Exception as e:
             g_log.info("Update device input/output KeyError: " + str(e))
+            
     elif data['actionId'] == TP_PLUGIN_ACTIONS["ToggleOut/Input"]['id'] and \
         data['listId'] == TP_PLUGIN_ACTIONS["ToggleOut/Input"]["data"]["optionSel"]["id"]:
         try:
@@ -305,6 +287,7 @@ def onListChange(data):
             updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["ToggleOut/Input"]['data']['deviceOption2']['id'], data['instanceId'])
         except Exception as e:
             g_log.info("Update device input/output KeyError: " + str(e))
+            
     elif data['actionId'] == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["id"] and \
         data["listId"] == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["deviceType"]["id"]:
         try:
@@ -324,7 +307,7 @@ def onListChange(data):
         try:
             updateDeviceChoices(data['value'], TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
-            g_log.info("Update device setDeviceVolume error " + str(e))
+            g_log.info("Update device setDeviceMute error " + str(e))
     
     ## left this the same, but it could be modified a bit.. atleast the updateDeviceChoices func so it retrieves from audio_controller
     elif data['actionId'] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"] and \
@@ -332,14 +315,13 @@ def onListChange(data):
         try:
             updateDeviceChoices(data['value'], TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
-            g_log.warning("Update device Windows Audio error " + str(e))
+            g_log.info("Update device Windows Audio error " + str(e))
 
 
 # Shutdown handler
 @TPClient.on(TP.TYPES.onShutdown)
 def onShutdown(data):
-    audio_manager.unregister_all_devices() # Shuts down cleanly without these
-    audio_manager.stop_listening()         # but dont know the potential issues that may arise..
+    audio_manager.stop_listening()
     listener.stop()
     g_log.info('Received shutdown event from TP Client.')
 

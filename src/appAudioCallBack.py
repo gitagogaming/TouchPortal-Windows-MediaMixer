@@ -1,29 +1,14 @@
 #### Cant figure out how to pass args to the magic session client hingy...... it doesnt allow me..
 
-
-
-
-from pycaw.magic import MagicManager, MagicSession
-from pycaw.constants import AudioSessionState
 import os
-import sys
-from argparse import ArgumentParser
-from ctypes import windll
-from logging import (DEBUG, INFO, WARNING, FileHandler, Formatter, NullHandler,
-                     StreamHandler, getLogger)
+from logging import getLogger
 from time import sleep
 
-import psutil
-import pythoncom
-import win32process
 from comtypes import COMError
+from pycaw.magic import MagicSession
 from pycaw.constants import AudioSessionState
-from pycaw.magic import MagicManager, MagicSession
-from pycaw.pycaw import EDataFlow, ERole
-import comtypes
 
 from windowFocusListener import WindowFocusListener
-from audioUtil.utils import getActiveExecutablePath
 import TouchPortalAPI as TP
 from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__
 
