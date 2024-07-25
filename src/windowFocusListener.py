@@ -117,9 +117,9 @@ class WindowFocusListener:
 
         # Only update if the volume is different from the last volume
         if volume_int != self.last_volume:
-            if self.current_app_connector_id in self.TPClient.shortIdTracker:
+            if current_app_connector_shortid := self.TPClient.shortIdTracker.get(self.current_app_connector_id, None):
                 self.TPClient.shortIdUpdate(
-                    self.TPClient.shortIdTracker[self.current_app_connector_id],
+                    current_app_connector_shortid,
                     volume_int
                 )
             self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(volume_int))
