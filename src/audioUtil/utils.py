@@ -3,10 +3,18 @@ import psutil
 import win32process
 import comtypes
 from comtypes import COMError
+from pycaw.pycaw import EDataFlow, ERole
 
 from audioUtil import audioSwitch
 from tppEntry import __version__
 
+
+dataMapper = {
+            "Output": EDataFlow.eRender.value,
+            "Input": EDataFlow.eCapture.value,
+            "Default": ERole.eMultimedia.value,
+            "Communications": ERole.eCommunications.value
+        }
 
 
 def getActiveExecutablePath():

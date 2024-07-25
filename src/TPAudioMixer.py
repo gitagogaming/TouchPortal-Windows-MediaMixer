@@ -1,20 +1,17 @@
 import os
 import sys
+from time import sleep
 from argparse import ArgumentParser
 from ctypes import windll
 from logging import (DEBUG, INFO, WARNING, FileHandler, Formatter, NullHandler,
                      StreamHandler, getLogger)
-from time import sleep
 
 import pythoncom
 import comtypes
 from pycaw.magic import MagicManager
-from pycaw.pycaw import EDataFlow, ERole
 
-
-
-from appAudioCallBack import volumeProcess, AppAudioCallBack
-from audioUtil.utils import getDevicebydata
+from appAudioCallBack import VolumeProcess, AppAudioCallBack
+from audioUtil.utils import getDevicebydata, dataMapper
 from audioUtil import audioSwitch
 from audioUtil.audioController import (get_process_id, muteAndUnMute, volumeChanger,
                                        setDeviceVolume, setDeviceMute)
@@ -22,7 +19,8 @@ from audioUtil.audioManager import AudioManager
 from windowFocusListener import WindowFocusListener
 
 import TouchPortalAPI as TP
-from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__
+from tppEntry import (PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, 
+                        TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__)
 
 
 sys.coinit_flags = 0
@@ -40,16 +38,6 @@ try:
 except Exception as e:
     sys.exit(f"Could not create TP Client, exiting. Error was:\n{repr(e)}")
     
-### Any action which interacts with anything NOT app related can now be updated using the audio_controller.inputDevicesReversed etc..
-### See slider example...
-
-dataMapper = {
-            "Output": EDataFlow.eRender.value,
-            "Input": EDataFlow.eCapture.value,
-            "Default": ERole.eMultimedia.value,
-            "Communications": ERole.eCommunications.value
-        }
-
 
 def updateDeviceChoices(options, choiceId, instanceId=None):
     deviceList = list(audioSwitch.MyAudioUtilities.getAllDevices(options).keys())
@@ -70,13 +58,13 @@ def updateDeviceChoices(options, choiceId, instanceId=None):
 def handleSettings(settings, on_connect=False):
     settings = { list(settings[i])[0] : list(settings[i].values())[0] for i in range(len(settings)) }
     if (value := settings.get(TP_PLUGIN_SETTINGS['ignore list']['name'])) is not None:
-        volumeprocess.audio_ignore_list = value if value != TP_PLUGIN_SETTINGS['ignore list']['default'] else []
+        volume_process.audio_ignore_list = value if value != TP_PLUGIN_SETTINGS['ignore list']['default'] else []
         
         try:   ## removing audio states assuming the user edited settings while plugin is running.. this avoids needing for user to reboot plugin for changes to take place
-            split_ignorelist = [app_name.replace(",", "").strip() + ".exe" for app_name in volumeprocess.audio_ignore_list.split(".exe") if app_name.strip()]
+            split_ignorelist = [app_name.replace(",", "").strip() + ".exe" for app_name in volume_process.audio_ignore_list.split(".exe") if app_name.strip()]
             for app_name in split_ignorelist:
-                if app_name in volumeprocess.audio_ignore_list:
-                    volumeprocess.removeAudioState(app_name)
+                if app_name in volume_process.audio_ignore_list:
+                    volume_process.removeAudioState(app_name)
         except:
             pass
 
@@ -94,22 +82,24 @@ def onConnect(data):
 def run_callbacks():
     pythoncom.CoInitialize()
     try:
-        AppAudioCallBack.set_tp_client(TPClient, volumeprocess, listener)
-        MagicManager.magic_session(AppAudioCallBack)
-    except Exception as e:
-        g_log.info(e, exc_info=True)
-    
-    try:  
-        listener.start()
-    except Exception as e:
-        g_log.info(e, exc_info=True)
+        try:
+            AppAudioCallBack.set_tp_client(TPClient, volume_process, listener)
+            MagicManager.magic_session(AppAudioCallBack)
+        except Exception as e:
+            g_log.info(e, exc_info=True)
+        
+        try:  
+            listener.start()
+        except Exception as e:
+            g_log.info(e, exc_info=True)
 
-    try:
-        audio_manager.fetch_devices()
-        audio_manager.start_listening()
-    except Exception as e:
-        g_log.info(e, exc_info=True)
-
+        try:
+            audio_manager.fetch_devices()
+            audio_manager.start_listening()
+        except Exception as e:
+            g_log.info(e, exc_info=True)
+    finally:
+        pythoncom.CoUninitialize()
 
 
 # Settings handler
@@ -153,7 +143,7 @@ def onAction(data):
     elif actionid == TP_PLUGIN_ACTIONS["ChangeOut/Input"]["id"] and action_data[0]['value'] != "Pick One": 
         name = action_data[1]['value']
         device_type = action_data[0]['value']
-        device, deviceId = audio_manager.getDeviceByName(name, device_type)
+        device, deviceId = audio_manager.get_device_by_name(name, device_type)
         if deviceId:
             audioSwitch.switchOutput(deviceId, dataMapper[action_data[2]['value']])
 
@@ -173,7 +163,7 @@ def onAction(data):
     elif actionid == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["id"] and action_data[2]["value"] != "Pick One":
         name = action_data[1]["value"]
         device_type = action_data[2]["value"]
-        device, deviceId = audio_manager.getDeviceByName(name, device_type)
+        device, deviceId = audio_manager.get_device_by_name(name, device_type)
         if device:
             if ((processid := get_process_id(action_data[0]['value'])) != None):
                 g_log.info(f"args devId: {deviceId}, processId: {processid}")
@@ -185,7 +175,7 @@ def onAction(data):
         device_type = action_data[0]['value']
         name = action_data[1]['value']
         volume_value = float(action_data[2]['value'])
-        device, deviceid = audio_manager.getDeviceByName(name, device_type)
+        device, deviceid = audio_manager.get_device_by_name(name, device_type)
         if device:
             setDeviceVolume(device, deviceid, volume_value)
     
@@ -194,7 +184,7 @@ def onAction(data):
         device_type = action_data[0]['value']
         name = action_data[1]['value']
         mute_choice = action_data[2]['value']
-        device, deviceid = audio_manager.getDeviceByName(name, device_type)
+        device, deviceid = audio_manager.get_device_by_name(name, device_type)
         if device:
             setDeviceMute(device, deviceid, mute_choice)
         
@@ -218,7 +208,7 @@ def heldingButton(data):
             volume_value = int(data['data'][2]['value'])
             volume_value = max(0, min(volume_value, 100))
             action = data['data'][3]['value']
-            device, deviceid = audio_manager.getDeviceByName(name, device_type)
+            device, deviceid = audio_manager.get_device_by_name(name, device_type)
             if device:
                 setDeviceVolume(device, deviceid, volume_value, action)
             
@@ -239,7 +229,7 @@ def connectors(data):
             name = "Default"
             slider_value = float(data['value'])
             volume_value = max(0, min(slider_value, 100))
-            device, deviceid = audio_manager.getDeviceByName(name, device_type)
+            device, deviceid = audio_manager.get_device_by_name(name, device_type)
             
             # Check if the volume object exists and set the master volume level
             if device:
@@ -263,7 +253,7 @@ def connectors(data):
         device_type = data['data'][0]['value']
         name = data['data'][1]['value']
         slider_value = float(data['value'])
-        device, deviceid = audio_manager.getDeviceByName(name, device_type)
+        device, deviceid = audio_manager.get_device_by_name(name, device_type)
         
         if device:
             setDeviceVolume(device, deviceid, slider_value)
@@ -403,7 +393,7 @@ def main():
     return ret
 
 if __name__ == "__main__":
-    volumeprocess = volumeProcess(TPClient)
+    volume_process = VolumeProcess(TPClient)
     audio_manager = AudioManager(TPClient)
     listener = WindowFocusListener(TPClient)
     main()

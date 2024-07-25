@@ -68,7 +68,6 @@ def get_process_id(name):
     return None
 
 def muteAndUnMute(process, value):
-    # pythoncom.CoInitialize()
     sessions = AudioUtilities.GetAllSessions() ## why do we get all sessions again if done previously? why not keep track of sessions
     for session in sessions:
         volume = session.SimpleAudioVolume
@@ -91,13 +90,13 @@ def volumeChanger(process, action, value):
     elif action == "Decrease":
         AudioController(str(process)).decrease_volume((int(value)*0.01))
 
+
 def setDeviceVolume(device, deviceid, value,  action = "Set"):
     if device is None:
         g_log.info(f"Device {deviceid} not found in audio_manager.devices.")
         return
     
     volume_scalar = value / 100.0
-    
     if action == "Set":
         new_volume = volume_scalar
     elif action == "Increase":
@@ -113,15 +112,6 @@ def setDeviceVolume(device, deviceid, value,  action = "Set"):
     device.SetMasterVolumeLevelScalar(new_volume, None)
     g_log.info(f"Device {deviceid} volume {action.lower()}d to {new_volume * 100:.2f}%")
 
-# def setDeviceVolume(device, deviceid, value):
-#     volume_scalar = value / 100.0
-    
-        
-#     # Check if the volume object exists and set the master volume level
-#     if device:
-#         device.SetMasterVolumeLevelScalar(volume_scalar, None)
-#     else:
-#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
 def setDeviceMute(device, deviceid, mute_choice)  :
             
@@ -138,6 +128,16 @@ def setDeviceMute(device, deviceid, mute_choice)  :
         device.SetMute(new_mute_state, None)
     else:
         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+
+
+
+
+
+
+
+
+
+
 
 
 # def volumeChanger(process, action, value):

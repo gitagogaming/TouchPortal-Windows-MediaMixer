@@ -116,7 +116,9 @@ class AudioEndpointVolumeCallback(COMObject):
             self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
             self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume mute"]["id"], "Muted" if notify_data.bMuted == 1 else "Un-muted")
         else:
-            g_log.info("its other devices...")
+            g_log.info("Its other devices... must be new.. tell the developer to fix this...", self.device_id)
+            g_log.debug("The Output", self.audio_manager.device_change_client.defaultOutputDeviceID)
+            g_log.debug("The Input", self.audio_manager.device_change_client.defaultInputDeviceID)
 
 class AudioManager:
     """
@@ -179,60 +181,70 @@ class AudioManager:
 
     def register_single_device(self, device_id):
         pythoncom.CoInitialize()
-        enumerator = AudioUtilities.GetDeviceEnumerator()
-        
-        for data_flow in [EDataFlow.eRender, EDataFlow.eCapture]:
-            devices = enumerator.EnumAudioEndpoints(data_flow.value, DEVICE_STATE.ACTIVE.value)
-            for i in range(devices.GetCount()):
-                device = devices.Item(i)
-                if device.GetId() == device_id:
-                    volume, callback = self.create_callback_for_device(device, "output" if data_flow == EDataFlow.eRender else "input")
-                    if volume and callback:
-                        self.devices[device_id] = (volume, callback)
-                        g_log.info(f"Callback registered for {'output' if data_flow == EDataFlow.eRender else 'input'} device: {device_id}")
-                    return
-        g_log.info(f"Device with ID {device_id} not found.")
-        pythoncom.CoUninitialize()
+        try:
+            enumerator = AudioUtilities.GetDeviceEnumerator()
+
+            for data_flow in [EDataFlow.eRender, EDataFlow.eCapture]:
+                devices = enumerator.EnumAudioEndpoints(data_flow.value, DEVICE_STATE.ACTIVE.value)
+                for i in range(devices.GetCount()):
+                    device = devices.Item(i)
+                    if device.GetId() == device_id:
+                        volume, callback = self.create_callback_for_device(device, "output" if data_flow == EDataFlow.eRender else "input")
+                        if volume and callback:
+                            self.devices[device_id] = (volume, callback)
+                            g_log.info(f"Callback registered for {'output' if data_flow == EDataFlow.eRender else 'input'} device: {device_id}")
+                        return
+            g_log.info(f"Device with ID {device_id} not found.")
+        except Exception as e:
+            g_log.error(e)
+        finally:
+            pythoncom.CoUninitialize()
         
         
     def setup_devices(self, data_flow):
         pythoncom.CoInitialize()
-        enumerator = AudioUtilities.GetDeviceEnumerator()
         
         try:
-            devices = enumerator.EnumAudioEndpoints(data_flow.value, DEVICE_STATE.ACTIVE.value)
-        except Exception as e:
-            g_log.info(f"Error enumerating audio endpoints: {e}")
-            return []
+            enumerator = AudioUtilities.GetDeviceEnumerator()
 
-        device_list = []
-
-        for i in range(devices.GetCount()):
             try:
-                device = devices.Item(i)
-                device_id = device.GetId()
-                state = device.GetState()
-                
-                g_log.info(f"Device ID: {device_id}, State: {state}")
-
-                if state == DEVICE_STATE.ACTIVE.value:
-                    if data_flow == EDataFlow.eRender:
-                        device_name = self.outputDevicesReversed.get(device_id, "None")
-                        volume, callback = self.create_callback_for_device(device, "output", device_name, device_id)
-                        if volume and callback:
-                            device_list.append((device_id, volume, callback))
-                            g_log.info(f"Callback registered for 'output' device: {device_name} {device_id}")
-                    elif data_flow == EDataFlow.eCapture:
-                        device_name = self.inputDevicesReversed.get(device_id, "None")
-                        volume, callback = self.create_callback_for_device(device, "input", device_name, device_id)
-                        if volume and callback:
-                            device_list.append((device_id, volume, callback))
-                            g_log.info(f"Callback registered for 'input' device: {device_name} {device_id}")
-                        
+                devices = enumerator.EnumAudioEndpoints(data_flow.value, DEVICE_STATE.ACTIVE.value)
             except Exception as e:
-                g_log.info(f"Error processing device: {e}")
+                g_log.info(f"Error enumerating audio endpoints: {e}")
+                return []
 
-        pythoncom.CoUninitialize()
+            device_list = []
+
+            for i in range(devices.GetCount()):
+                try:
+                    device = devices.Item(i)
+                    device_id = device.GetId()
+                    state = device.GetState()
+
+                    g_log.info(f"Device ID: {device_id}, State: {state}")
+
+                    if state == DEVICE_STATE.ACTIVE.value:
+                        if data_flow == EDataFlow.eRender:
+                            device_name = self.outputDevicesReversed.get(device_id, "None")
+                            volume, callback = self.create_callback_for_device(device, "output", device_name, device_id)
+                            if volume and callback:
+                                device_list.append((device_id, volume, callback))
+                                g_log.info(f"Callback registered for 'output' device: {device_name} {device_id}")
+                        
+                        elif data_flow == EDataFlow.eCapture:
+                            device_name = self.inputDevicesReversed.get(device_id, "None")
+                            volume, callback = self.create_callback_for_device(device, "input", device_name, device_id)
+                            if volume and callback:
+                                device_list.append((device_id, volume, callback))
+                                g_log.info(f"Callback registered for 'input' device: {device_name} {device_id}")
+
+                except Exception as e:
+                    g_log.info(f"Error processing device: {e}")
+        except Exception as e:
+            g_log.info(f"Error processing device: {e}")
+        finally:
+            pythoncom.CoUninitialize()
+            
         return device_list
 
     def register_all_devices(self):
@@ -281,7 +293,7 @@ class AudioManager:
         self.inputDevicesReversed = {v: k for k, v in self.inputDevices.items()}
         return self.inputDevicesReversed.keys(), self.outputDevicesReversed.keys()
         
-    def getDeviceByName(self, name, device_type):
+    def get_device_by_name(self, name, device_type):
         """Retrieve the volume object for the selected device
         - returns volume object, deviceid
         """
@@ -428,6 +440,7 @@ class AudioDeviceNotificationHandler(MMNotificationClient):
             else:
                 self.defaultOutputDeviceID = pwstrDeviceId
                 self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.audio_manager.outputDevicesReversed.get(self.defaultOutputDeviceID, "Unknown"))
+        
         elif flow == EDataFlow.eCapture.value:
             if role == ERole.eCommunications.value:
                 self.defaultInputCommunicationDeviceID = pwstrDeviceId
@@ -458,8 +471,8 @@ def main():
     # global audio_manager
     audio_manager = AudioManager()
     # Obtain a list of all devices
-    audio_manager.outputDevicesReversed= audio_manager.getAllDevices(direction="output")
-    audio_manager.inputDevicesReversed= audio_manager.getAllDevices(direction="input")
+    audio_manager.outputDevicesReversed = audio_manager.getAllDevices(direction="output")
+    audio_manager.inputDevicesReversed = audio_manager.getAllDevices(direction="input")
     
     outputDevicesReversed = {v: k for k, v in audio_manager.outputDevicesReversed.items()} 
     inputDevicesReversed = {v: k for k, v in audio_manager.inputDevicesReversed.items()} 

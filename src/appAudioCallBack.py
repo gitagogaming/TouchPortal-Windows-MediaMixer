@@ -14,9 +14,9 @@ from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUG
 
 g_log = getLogger(__name__)
 
-class volumeProcess:
+class VolumeProcess:
     def __init__(self, tpClient:TP.Client):
-        self.volumeprocess = ["Master Volume", "Current app"]
+        self.volume_process = ["Master Volume", "Current app"]
         self.audio_ignore_list = []
         self.TPClient = tpClient
         
@@ -25,10 +25,10 @@ class volumeProcess:
         cls.tp_client = client
         
     def updateVolumeMixerChoicelist(self):
-        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["Inc/DecrVol"]['data']['AppChoice']['id'], self.volumeprocess[1:])
-        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppMute"]['data']['appChoice']['id'], self.volumeprocess[1:])
-        self.TPClient.choiceUpdate(TP_PLUGIN_CONNECTORS["APP control"]["data"]["appchoice"]['id'], self.volumeprocess)
-        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["AppChoice"]["id"], self.volumeprocess[1:])
+        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["Inc/DecrVol"]['data']['AppChoice']['id'], self.volume_process[1:])
+        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppMute"]['data']['appChoice']['id'], self.volume_process[1:])
+        self.TPClient.choiceUpdate(TP_PLUGIN_CONNECTORS["APP control"]["data"]["appchoice"]['id'], self.volume_process)
+        self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["AppChoice"]["id"], self.volume_process[1:])
     
     def removeAudioState(self, app_name):
         if self.TPClient.currentStates.get(PLUGIN_ID + f".createState.{app_name}.muteState"):
@@ -37,7 +37,7 @@ class volumeProcess:
                         PLUGIN_ID + f".createState.{app_name}.volume",
                         PLUGIN_ID + f".createState.{app_name}.active"
                         ])
-            self.volumeprocess.remove(app_name)
+            self.volume_process.remove(app_name)
             self.updateVolumeMixerChoicelist() # Update with new changes
         else:
             g_log.info("AudioState not present")
@@ -45,7 +45,7 @@ class volumeProcess:
     def audioStateManager(self, app_name):
         g_log.debug(f"AUDIO EXEMPT LIST {self.audio_ignore_list}")
     
-        if app_name not in self.volumeprocess:
+        if app_name not in self.volume_process:
             g_log.info("Creating states")
             self.TPClient.createStateMany([
                     {   
@@ -67,7 +67,7 @@ class volumeProcess:
                         "value": ""
                     },
                     ])
-            self.volumeprocess.append(app_name)
+            self.volume_process.append(app_name)
     
             """UPDATING CHOICES"""
             self.updateVolumeMixerChoicelist()
@@ -82,13 +82,13 @@ class volumeProcess:
 
 class AppAudioCallBack(MagicSession):
     TPClient = None
-    volumeprocess = None
+    volume_process = None
     listener = None
     
     @classmethod
-    def set_tp_client(cls, client, volumeprocess, listener):
+    def set_tp_client(cls, client, volume_process, listener):
         cls.TPClient:TP.Client = client
-        cls.volumeprocess:volumeProcess = volumeprocess
+        cls.volume_process:VolumeProcess = volume_process
         cls.listener:WindowFocusListener = listener
 
         
@@ -100,7 +100,7 @@ class AppAudioCallBack(MagicSession):
         )
         self.app_name = self.magic_root_session.app_exec
 
-        if self.app_name not in self.volumeprocess.audio_ignore_list:
+        if self.app_name not in self.volume_process.audio_ignore_list:
             # set initial:
             self.update_mute(self.mute)
             self.update_state(self.state)
@@ -114,7 +114,7 @@ class AppAudioCallBack(MagicSession):
         (see callback -> AudioSessionEvents -> OnStateChanged)
         """
         
-        if self.app_name not in self.volumeprocess.audio_ignore_list:
+        if self.app_name not in self.volume_process.audio_ignore_list:
             if new_state == AudioSessionState.Inactive:
                 # AudioSessionStateInactive
                 """Sesssion is Inactive"""
@@ -128,7 +128,7 @@ class AppAudioCallBack(MagicSession):
     
         if new_state == AudioSessionState.Expired:
             """Removing Expired States"""
-            self.volumeprocess.removeAudioState(self.app_name)
+            self.volume_process.removeAudioState(self.app_name)
 
     
     def update_volume(self, new_volume):
@@ -136,7 +136,7 @@ class AppAudioCallBack(MagicSession):
         when volume is changed externally - Updating Sliders and Volume States
         (see callback -> AudioSessionEvents -> OnSimpleVolumeChanged )
         """
-        if self.app_name not in self.volumeprocess.audio_ignore_list:
+        if self.app_name not in self.volume_process.audio_ignore_list:
             self.TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
             #g_log.info(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
             app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
@@ -157,8 +157,8 @@ class AppAudioCallBack(MagicSession):
             
     def update_mute(self, muted):
         """ when mute state is changed by user or through other app """
-        if self.app_name not in self.volumeprocess.audio_ignore_list:
-            isDeleted = self.volumeprocess.audioStateManager(self.app_name)
+        if self.app_name not in self.volume_process.audio_ignore_list:
+            isDeleted = self.volume_process.audioStateManager(self.app_name)
             if not isDeleted:
                 self.TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.muteState", "Muted" if muted else "Un-muted")
                 g_log.debug(f"Mute State: {self.app_name} - {'Muted' if muted else 'Un-muted'}")
