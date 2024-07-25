@@ -21,8 +21,11 @@ class WindowFocusListener:
         
         self.TPClient = TPClient
         self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+        
+        self.current_focused_name = ""
         self.current_focused_exe_path = ""
         self.last_volume = None
+        self.last_mute = None
 
 
     def callback(self, hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
@@ -32,7 +35,9 @@ class WindowFocusListener:
             if executable_path:
                 self.current_focused_exe_path = executable_path
                 process_name = os.path.basename(executable_path)
-                self.update_volume_info(process_name)
+                
+                self.update_process_states(process_name)
+
                 g_log.info(f"Window focus changed to: {window_title} | Process: {process_name}")
 
     def win_event_loop(self):
@@ -94,11 +99,16 @@ class WindowFocusListener:
     def get_app_path(self):
         return self.current_focused_exe_path
     
-    def get_volume(self, process_name):
-        session = self.get_session(process_name)
+    def get_volume(self, session):
         if session:
             interface = session.SimpleAudioVolume
             return interface.GetMasterVolume()
+        return None
+    
+    def get_mute(self, session):
+        if session:
+            interface = session.SimpleAudioVolume
+            return interface.GetMute()
         return None
 
     def get_session(self, process_name):
@@ -108,23 +118,34 @@ class WindowFocusListener:
                 return session
         return None
 
-    def update_volume_info(self, process_name):
-        current_app_volume = self.get_volume(process_name)
-        volume_int = 0
+    def update_process_states(self, process_name):
+        session = self.get_session(process_name)
+        
+        if process_name != self.current_focused_name:
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES['FocusedAPP']['id'], process_name)
+            self.current_focused_name = process_name
 
-        if current_app_volume is not None:
-            volume_int = int(current_app_volume * 100)
+        if not session:
+            
+            return
 
-        # Only update if the volume is different from the last volume
+        current_app_volume = self.get_volume(session)
+        current_app_mute = self.get_mute(session)
+
+        volume_int = int(current_app_volume * 100) if current_app_volume is not None else 0
+
+        # Update volume if it has changed
         if volume_int != self.last_volume:
             if current_app_connector_shortid := self.TPClient.shortIdTracker.get(self.current_app_connector_id, None):
-                self.TPClient.shortIdUpdate(
-                    current_app_connector_shortid,
-                    volume_int
-                )
+                self.TPClient.shortIdUpdate(current_app_connector_shortid, volume_int)
             self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(volume_int))
             self.last_volume = volume_int
 
+        # Update mute state if it has changed
+        if current_app_mute != self.last_mute:
+            mute_state = "Muted" if current_app_mute else "Un-muted"
+            self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppMute']['id'], mute_state)
+            self.last_mute = current_app_mute
 
 if __name__ == "__main__":
     listener = WindowFocusListener()

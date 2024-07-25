@@ -10,7 +10,7 @@ from pycaw.constants import AudioSessionState
 
 from windowFocusListener import WindowFocusListener
 import TouchPortalAPI as TP
-from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__
+from tppEntry import PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, TP_PLUGIN_INFO, TP_PLUGIN_STATES, __version__
 
 g_log = getLogger(__name__)
 
@@ -146,7 +146,11 @@ class AppAudioCallBack(MagicSession):
                 if current_app_connector_shortId := self.TPClient.shortIdTracker.get(current_app_connector_id, None):
                     self.TPClient.shortIdUpdate(
                         current_app_connector_shortId,
-                        int(new_volume * 100) if os.path.basename(activeWindow) == self.app_name else 0)      
+                        int(new_volume * 100) if os.path.basename(activeWindow) == self.app_name else 0)  
+                        
+                if self.listener.current_focused_name == self.app_name:
+                    self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(int(new_volume * 100)))
+                    
             g_log.debug(f"Volume: {self.app_name} - {new_volume}")
        
             
@@ -156,6 +160,10 @@ class AppAudioCallBack(MagicSession):
             isDeleted = self.volume_process.audioStateManager(self.app_name)
             if not isDeleted:
                 self.TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.muteState", "Muted" if muted else "Un-muted")
+                
+                if self.listener.current_focused_name == self.app_name:
+                    self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppMute']['id'], "Muted" if muted else "Un-muted")
+
                 g_log.debug(f"Mute State: {self.app_name} - {'Muted' if muted else 'Un-muted'}")
 
 
