@@ -142,13 +142,15 @@ class AppAudioCallBack(MagicSession):
             """Checking for Current App If Its Active, Adjust it also"""
             if (activeWindow := self.listener.get_app_path()) != "":
                 current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-
-                if current_app_connector_shortId := self.TPClient.shortIdTracker.get(current_app_connector_id, None):
-                    self.TPClient.shortIdUpdate(
-                        current_app_connector_shortId,
-                        int(new_volume * 100) if os.path.basename(activeWindow) == self.app_name else 0)  
-                        
                 if self.listener.current_focused_name == self.app_name:
+                    if current_app_connector_shortId := self.TPClient.shortIdTracker.get(current_app_connector_id, None):
+                        if self.listener.last_volume != new_volume:
+                            self.TPClient.shortIdUpdate(
+                                current_app_connector_shortId,
+                                int(new_volume * 100) if os.path.basename(activeWindow) == self.app_name else 0)
+                            
+                            self.listener.last_volume != new_volume
+                        
                     self.TPClient.stateUpdate(TP_PLUGIN_STATES['currentAppVolume']['id'], str(int(new_volume * 100)))
                     
             g_log.debug(f"Volume: {self.app_name} - {new_volume}")
