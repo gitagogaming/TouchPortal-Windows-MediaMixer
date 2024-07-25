@@ -86,17 +86,20 @@ class AudioEndpointVolumeCallback(COMObject):
         if self.device_id == self.audio_manager.device_change_client.defaultInputDeviceID:
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentInputMasterVolume", str(master_volume))
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentInputMasterVolumeMute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
-            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
+            self.audio_manager.update_connector(self.device_type.capitalize(), self.device_name, notify_data.fMasterVolume)
+            self.audio_manager.update_connector("Input", "Default", notify_data.fMasterVolume)
+
 
         elif self.device_id == self.audio_manager.device_change_client.defaultOutputDeviceID:
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentMasterVolume", str(master_volume))
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentMasterVolumeMute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
-            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
+            self.audio_manager.update_connector(self.device_type.capitalize(), self.device_name, notify_data.fMasterVolume)
+            self.audio_manager.update_connector("Output", "Default", notify_data.fMasterVolume)
 
         else:
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.device.{self.device_type}.{self.device_name}.volume", str(master_volume))
             self.TPClient.stateUpdate(PLUGIN_ID + f".state.device.{self.device_type}.{self.device_name}.mute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
-            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
+            self.audio_manager.update_connector(self.device_type.capitalize(), self.device_name, notify_data.fMasterVolume)
 
     
             
@@ -162,7 +165,7 @@ class AudioManager:
         other_device_connector_id = (
             f"pc_{TP_PLUGIN_INFO['id']}_"
             f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
-            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}={device_type.capitalize()}|"
+            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}={device_type}|"
             f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}={device_name}"
         )
 
@@ -189,7 +192,7 @@ class AudioManager:
                 self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.volume", f"{device_type} - {device_name} Volume", str(round(current_volume * 100)), "Output Devices")
                 self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.mute", f"{device_type} - {device_name} Mute",  "Muted" if current_mute == 1 else "Un-muted", "Output Devices")
             
-            self.update_connector(device_type, device_name, current_volume)
+            self.update_connector(device_type.capitalize(), device_name, current_volume)
             return volume, callback
         except Exception as e:
             g_log.info(f"Error creating callback for device {device.GetId()}: {e}")
@@ -330,41 +333,8 @@ class AudioManager:
                 volume, _ = self.devices.get(deviceid, (None, None))
 
         return volume, deviceid
-    # def initialize_default_devices(self):
-    #     """ 
-    #     When starting up we fetch the default input/output devices 
-    #     Should be event based after that.
-    #     """
-    #     device_map = {
-    #         "outputDevice": (EDataFlow.eRender.value, ERole.eMultimedia.value),
-    #         "outputDeviceCommunication": (EDataFlow.eRender.value, ERole.eCommunications.value),
-    #         "inputDevice": (EDataFlow.eCapture.value, ERole.eMultimedia.value),
-    #         "inputDeviceCommunication": (EDataFlow.eCapture.value, ERole.eCommunications.value)
-    #     }
-
-    #     def get_default_device_id(edata, erole):
-    #         device_enumerator = comtypes.CoCreateInstance(
-    #             CLSID_MMDeviceEnumerator,
-    #             IMMDeviceEnumerator,
-    #             comtypes.CLSCTX_INPROC_SERVER
-    #         )
-    #         default_device = device_enumerator.GetDefaultAudioEndpoint(edata, erole)
-    #         return default_device.GetId() if default_device else None
-
-    #     try:
-    #         for device_key, (edata, erole) in device_map.items():
-    #             device_id = get_default_device_id(edata, erole)
-    #             attr_name = f"default{device_key.capitalize()}"
-    #             setattr(self.device_change_client, attr_name, device_id)
-
-    #             device_dict = self.outputDevicesReversed if 'output' in device_key.lower() else self.inputDevicesReversed
-    #             state_key = "outputDeviceCommunication" if device_key == "outputCommunicationDevice" else device_key
-    #             TPClient.stateUpdate(TP_PLUGIN_STATES[state_key]["id"], device_dict.get(device_id, "Unknown"))
-
-    #             g_log.info(f"Default {device_key} ID: {device_id} ({getattr(self.device_change_client, attr_name)})")
-
-    #     except Exception as e:
-    #         g_log.info(f"Error initializing default devices: {e}")
+ 
+ 
     def initialize_default_devices(self):
         """ 
         When starting up we fetch the default input/output devices 
@@ -413,6 +383,25 @@ class AudioManager:
             self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.outputDevicesReversed.get(self.device_change_client.defaultOutputCommunicationDeviceID, "Unknown"))
             self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown"))
             self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputCommunicationDeviceID, "Unknown"))
+                    # Update connectors for each device individually
+            if self.device_change_client.defaultOutputDeviceID:
+                device_name = self.outputDevicesReversed.get(self.device_change_client.defaultOutputDeviceID, "Unknown")
+                device, _ = self.devices[self.device_change_client.defaultOutputDeviceID]
+                print("Device Name: ", device_name)
+                if device:
+                    master_volume = device.GetMasterVolumeLevelScalar()
+                    muted = device.GetMute()
+                    self.update_connector(TP_PLUGIN_STATES["outputDevice"]["id"], device_name, master_volume)
+                    # self.update_connector("Output", device_name, master_volume)
+
+            if self.device_change_client.defaultInputDeviceID:
+                device_name = self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown")
+                device, _ = self.devices[self.device_change_client.defaultInputDeviceID]
+                if device:
+                    # master_volume = device.GetMasterVolumeLevelScalar()
+                    muted = device.GetMute()
+                    self.update_connector("Input", "Default", device.GetMasterVolumeLevelScalar())
+        
 
             # Log the device IDs
             g_log.info(f"Default output device ID: {self.device_change_client.defaultOutputDeviceID}")
