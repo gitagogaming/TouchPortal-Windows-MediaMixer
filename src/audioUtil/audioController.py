@@ -6,6 +6,9 @@ import pythoncom
 # from pycaw.constants import CLSID_MMDeviceEnumerator
 from pycaw.pycaw import AudioUtilities #, EDataFlow, IAudioEndpointVolume,
                          #IMMDeviceEnumerator)
+from logging import getLogger
+
+g_log = getLogger(__name__)
 
 class AudioController:
     def __init__(self, process_name):
@@ -94,6 +97,31 @@ def volumeChanger(process, action, value):
     elif action == "Decrease":
         AudioController(str(process)).decrease_volume((int(value)*0.01))
 
+def setDeviceVolume(device, deviceid, value):
+    volume_scalar = value / 100.0
+    
+        
+    # Check if the volume object exists and set the master volume level
+    if device:
+        device.SetMasterVolumeLevelScalar(volume_scalar, None)
+    else:
+        g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+
+def setDeviceMute(device, deviceid, mute_choice)  :
+            
+    # Check if the volume object exists and set the master volume level
+    if device:
+        if mute_choice == "Toggle":
+            current_mute_state = device.GetMute()
+            new_mute_state = not current_mute_state
+        elif mute_choice == "Mute":
+            new_mute_state = 1
+        elif mute_choice == "Un-Mute":
+            new_mute_state = 0
+            
+        device.SetMute(new_mute_state, None)
+    else:
+        g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
 
 # def volumeChanger(process, action, value):

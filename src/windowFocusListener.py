@@ -7,6 +7,8 @@ import os
 import psutil
 from pycaw.pycaw import AudioUtilities
 from logging import getLogger
+
+from audioUtil.utils import getActiveExecutablePath
 from tppEntry import TP_PLUGIN_STATES, TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, __version__
 import TouchPortalAPI as TP
 
@@ -18,17 +20,21 @@ class WindowFocusListener:
         self.win_event_proc = None
         self.running = False
         self.thread = None
+        
         self.TPClient = TPClient
         self.TP_PLUGIN_STATES = TP_PLUGIN_STATES
         self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+       
+        self.current_focused_exe_path = ""
         self.last_volume = None
 
 
     def callback(self, hWinEventHook, event, hwnd, idObject, idChild, dwEventThread, dwmsEventTime):
         if event == win32con.EVENT_SYSTEM_FOREGROUND:
             window_title = win32gui.GetWindowText(hwnd)
-            executable_path = self.getActiveExecutablePath()
+            executable_path = getActiveExecutablePath()
             if executable_path:
+                self.current_focused_exe_path = executable_path
                 process_name = os.path.basename(executable_path)
                 self.update_volume_info(process_name)
                 g_log.info(f"Window focus changed to: {window_title} | Process: {process_name}")
@@ -89,14 +95,9 @@ class WindowFocusListener:
             
             g_log.info("Stopped listening for focus changes.")
 
-    def getActiveExecutablePath(self):
-        hWnd = ctypes.windll.user32.GetForegroundWindow()
-        if hWnd == 0:
-            return None
-        else:
-            _, pid = win32process.GetWindowThreadProcessId(hWnd)
-            return psutil.Process(pid).exe()
-
+    def get_app_path(self):
+        return self.current_focused_exe_path
+    
     def get_volume(self, process_name):
         session = self.get_session(process_name)
         if session:

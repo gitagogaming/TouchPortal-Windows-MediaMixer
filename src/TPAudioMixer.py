@@ -6,19 +6,18 @@ from logging import (DEBUG, INFO, WARNING, FileHandler, Formatter, NullHandler,
                      StreamHandler, getLogger)
 from time import sleep
 
-import psutil
 import pythoncom
-import win32process
-from comtypes import COMError
-from pycaw.constants import AudioSessionState
-from pycaw.magic import MagicManager, MagicSession
-from pycaw.pycaw import EDataFlow, ERole
 import comtypes
+from pycaw.magic import MagicManager
+from pycaw.pycaw import EDataFlow, ERole
 
 
+
+from appAudioCallBack import volumeProcess, AppAudioCallBack
+from audioUtil.utils import getDevicebydata
 from audioUtil import audioSwitch
-from audioUtil.audioController import (get_process_id, muteAndUnMute, volumeChanger)
-                                       #setDeviceVolume, setMasterVolume,)
+from audioUtil.audioController import (get_process_id, muteAndUnMute, volumeChanger,
+                                       setDeviceVolume, setDeviceMute)
 from audioUtil.audioManager import AudioManager
 from windowFocusListener import WindowFocusListener
 
@@ -52,145 +51,12 @@ dataMapper = {
         }
 
 
-class volumeProcess:
-    def __init__(self):
-        self.volumeprocess = ["Master Volume", "Current app"]
-        self.audio_ignore_list = []
-        
-    def updateVolumeMixerChoicelist(self):
-        TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["Inc/DecrVol"]['data']['AppChoice']['id'], self.volumeprocess[1:])
-        TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppMute"]['data']['appChoice']['id'], self.volumeprocess[1:])
-        TPClient.choiceUpdate(TP_PLUGIN_CONNECTORS["APP control"]["data"]["appchoice"]['id'], self.volumeprocess)
-        TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["AppChoice"]["id"], self.volumeprocess[1:])
-    
-    def removeAudioState(self, app_name):
-        if TPClient.currentStates.get(PLUGIN_ID + f".createState.{app_name}.muteState"):
-            TPClient.removeStateMany([
-                        PLUGIN_ID + f".createState.{app_name}.muteState",
-                        PLUGIN_ID + f".createState.{app_name}.volume",
-                        PLUGIN_ID + f".createState.{app_name}.active"
-                        ])
-            self.volumeprocess.remove(app_name)
-            self.updateVolumeMixerChoicelist() # Update with new changes
-        else:
-            g_log.info("AudioState not present")
-    
-    def audioStateManager(self, app_name):
-        g_log.debug(f"AUDIO EXEMPT LIST {self.audio_ignore_list}")
-    
-        if app_name not in self.volumeprocess:
-            g_log.info("Creating states")
-            TPClient.createStateMany([
-                    {   
-                        "id": PLUGIN_ID + f".createState.{app_name}.muteState",
-                        "desc": f"{app_name} Mute State",
-                        "parentGroup": "Audio process state",
-                        "value": ""
-                    },
-                    {
-                        "id": PLUGIN_ID + f".createState.{app_name}.volume",
-                        "desc": f"{app_name} Volume",
-                        "parentGroup": "Audio process state",
-                        "value": ""
-                    },
-                    {
-                        "id": PLUGIN_ID + f".createState.{app_name}.active",
-                        "desc": f"is {app_name} Active",
-                        "parentGroup": "Audio process state",
-                        "value": ""
-                    },
-                    ])
-            self.volumeprocess.append(app_name)
-    
-            """UPDATING CHOICES"""
-            self.updateVolumeMixerChoicelist()
-            g_log.debug(f"{app_name} state added")
-    
-        """ Checking for Exempt Audio"""
-        if app_name in self.audio_ignore_list:
-            self.removeAudioState(app_name)
-            return True
-        return False
-        
-
-class AppAudioCallBack(MagicSession):
-    def __init__(self):
-        super().__init__(volume_callback=self.update_volume,
-                         mute_callback=self.update_mute,
-                         state_callback=self.update_state)
-
-        # ______________ DISPLAY NAME ______________
-        self.app_name = self.magic_root_session.app_exec
-        
-        if self.app_name not in volumeprocess.audio_ignore_list:
-            # set initial:
-            self.update_mute(self.mute)
-            self.update_state(self.state)
-            self.update_volume(self.volume)
-        
-
-    def update_state(self, new_state):
-        """
-        when status changed
-        (see callback -> AudioSessionEvents -> OnStateChanged)
-        """
-        
-        if self.app_name not in volumeprocess.audio_ignore_list:
-            if new_state == AudioSessionState.Inactive:
-                # AudioSessionStateInactive
-                """Sesssion is Inactive"""
-                g_log.debug(f"{self.app_name} not active")
-                TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.active","False")
-    
-            elif new_state == AudioSessionState.Active:
-                """Session Active"""
-                g_log.debug(f"{self.app_name} is an Active Session")
-                TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.active","True")
-    
-        if new_state == AudioSessionState.Expired:
-            """Removing Expired States"""
-            volumeprocess.removeAudioState(self.app_name)
-
-    
-    def update_volume(self, new_volume):
-        """
-        when volume is changed externally - Updating Sliders and Volume States
-        (see callback -> AudioSessionEvents -> OnSimpleVolumeChanged )
-        """
-        
-        if self.app_name not in volumeprocess.audio_ignore_list:
-            TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
-            #g_log.info(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
-            app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
-            if app_connector_id in TPClient.shortIdTracker :
-                TPClient.shortIdUpdate(
-                    TPClient.shortIdTracker[app_connector_id],
-                    round(new_volume*100))
-            """Checking for Current App If Its Active, Adjust it also"""
-            if (activeWindow := getActiveExecutablePath()) != "":
-                current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
-
-                if current_app_connector_id in TPClient.shortIdTracker :
-                    TPClient.shortIdUpdate(
-                        TPClient.shortIdTracker[current_app_connector_id],
-                        int(new_volume*100) if os.path.basename(activeWindow) == self.app_name else 0)
-            g_log.debug(f"Volume: {self.app_name} - {new_volume}")
-            
-    def update_mute(self, muted):
-        """ when mute state is changed by user or through other app """
-        if self.app_name not in volumeprocess.audio_ignore_list:
-            isDeleted = volumeprocess.audioStateManager(self.app_name)
-            if not isDeleted:
-                TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.muteState", "Muted" if muted else "Un-muted")
-                g_log.debug(f"Mute State: {self.app_name} - {'Muted' if muted else 'Un-muted'}")
-
-
-
 def updateDeviceChoices(options, choiceId, instanceId=None):
     deviceList = list(audioSwitch.MyAudioUtilities.getAllDevices(options).keys())
     if (choiceId == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"] or \
             choiceId == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"] or \
-                choiceId == TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']):
+                choiceId == TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceOption"]["id"] or \
+                    choiceId == TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']):
 
         deviceList.insert(0, "Default")
     if instanceId:
@@ -198,60 +64,7 @@ def updateDeviceChoices(options, choiceId, instanceId=None):
     else:
         TPClient.choiceUpdate(choiceId, deviceList)
     g_log.debug(f'updating {options} {deviceList}')
-
-
-def getActiveExecutablePath():
-    hWnd = windll.user32.GetForegroundWindow()
-    if hWnd == 0:
-        return None # Note that this function doesn't use GetLastError().
-    else:
-        _, pid = win32process.GetWindowThreadProcessId(hWnd)
-        return psutil.Process(pid).exe()
-
-
-
-STGM_READ = 0x00000000
-def getDevicebydata(edata, erole):
-    DEVPKEY_Device_FriendlyName = "{a45c254e-df1c-4efd-8020-67d146a850e0} 14".upper()
-
-    device = ""
-    audioDevice = None
-
-    comtypes.CoInitialize()
-    try:
-        audioDevice = audioSwitch.MyAudioUtilities.GetDeviceState(edata, erole)
-        if audioDevice:
-            properties = {}
-            store = audioDevice.OpenPropertyStore(STGM_READ)
-            try:
-                propCount = store.GetCount()
-                for j in range(propCount):
-                    pk = store.GetAt(j)
-                    value = store.GetValue(pk)
-                    v = value.GetValue()
-                    value.clear()
-
-                    name = str(pk)
-                    properties[name] = v
-                device = properties.get(DEVPKEY_Device_FriendlyName, "")
-
-            finally:
-                value.clear()
-                store.Release()
-                del store
-                del properties
-
-    except COMError as exc:
-        pass
-
-    finally:
-        if audioDevice:
-            audioDevice.Release()
-            del audioDevice
-        comtypes.CoUninitialize()
-    return str(device)
-        
-
+    
 
 
 def handleSettings(settings, on_connect=False):
@@ -281,6 +94,7 @@ def onConnect(data):
 def run_callbacks():
     pythoncom.CoInitialize()
     try:
+        AppAudioCallBack.set_tp_client(TPClient, volumeprocess, listener)
         MagicManager.magic_session(AppAudioCallBack)
     except Exception as e:
         g_log.info(e, exc_info=True)
@@ -317,7 +131,7 @@ def onAction(data):
     elif actionid == TP_PLUGIN_ACTIONS['AppMute']['id']:
         if action_data[0]['value'] != '':
             if action_data[0]['value'] == "Current app":
-                activeWindow = getActiveExecutablePath()
+                activeWindow = listener.get_app_path()
                 if activeWindow != "":
                     muteAndUnMute(os.path.basename(activeWindow), action_data[1]['value'])
             else:
@@ -329,7 +143,7 @@ def onAction(data):
         volume_value = max(0, min(volume_value, 100))
 
         if action_data[0]['value'] == "Current app":
-            activeWindow = getActiveExecutablePath()
+            activeWindow = listener.get_app_path()
             if activeWindow != "":
                 volumeChanger(os.path.basename(activeWindow), action_data[1]['value'], volume_value)
         else:
@@ -372,30 +186,19 @@ def onAction(data):
         device_type = action_data[0]['value']
         name = action_data[1]['value']
         volume_value = float(action_data[2]['value'])
-        setDeviceVolume(device_type, name, volume_value)
+        device, deviceid = audio_manager.getDeviceByName(name, device_type)
+
+        setDeviceVolume(device, deviceid, volume_value)
     
     # For Devices        
     elif actionid == TP_PLUGIN_ACTIONS["setDeviceMute"]["id"] and action_data[0]["value"] != "Pick One":
         device_type = action_data[0]['value']
         name = action_data[1]['value']
         mute_choice = action_data[2]['value']
-        
         device, deviceid = audio_manager.getDeviceByName(name, device_type)
-            
-        # Check if the volume object exists and set the master volume level
-        if device:
-            if mute_choice == "Toggle":
-                current_mute_state = device.GetMute()
-                new_mute_state = not current_mute_state
-            elif mute_choice == "Mute":
-                new_mute_state = 1
-            elif mute_choice == "Un-Mute":
-                new_mute_state = 0
-                
-            device.SetMute(new_mute_state, None)
-        else:
-            g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
+        setDeviceMute(device, deviceid, mute_choice)
+        
     else:
         g_log.warning("Got unknown action ID: " + actionid)
 
@@ -437,7 +240,7 @@ def connectors(data):
                 g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
                 
         elif data['data'][0]['value'] == "Current app":
-            activeWindow = getActiveExecutablePath()
+            activeWindow = listener.get_app_path()
             
             if activeWindow != "":
                 volumeChanger(os.path.basename(activeWindow), "Set", data['value'])
@@ -448,26 +251,43 @@ def connectors(data):
                 g_log.debug(f"Exception in other app volume change Error: " + str(e))
 
 
-
     elif data["connectorId"] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"]:
         device_type = data['data'][0]['value']
         name = data['data'][1]['value']
         slider_value = float(data['value'])
-        setDeviceVolume(device_type, name, slider_value)
+        
+        device, deviceid = audio_manager.getDeviceByName(name, device_type)
+
+        setDeviceVolume(device, deviceid, slider_value)
 
             
-def setDeviceVolume(device_type, name, value):
-    volume_scalar = value / 100.0
+# def setDeviceVolume(device_type, name, value):
+#     volume_scalar = value / 100.0
     
-    device, deviceid = audio_manager.getDeviceByName(name, device_type)
+#     device, deviceid = audio_manager.getDeviceByName(name, device_type)
         
-    # Check if the volume object exists and set the master volume level
-    if device:
-        device.SetMasterVolumeLevelScalar(volume_scalar, None)
-    else:
-        g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
+#     # Check if the volume object exists and set the master volume level
+#     if device:
+#         device.SetMasterVolumeLevelScalar(volume_scalar, None)
+#     else:
+#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
-    
+# def setDeviceMute(device_type, name, mute_choice)  :
+#     device, deviceid = audio_manager.getDeviceByName(name, device_type)
+            
+#     # Check if the volume object exists and set the master volume level
+#     if device:
+#         if mute_choice == "Toggle":
+#             current_mute_state = device.GetMute()
+#             new_mute_state = not current_mute_state
+#         elif mute_choice == "Mute":
+#             new_mute_state = 1
+#         elif mute_choice == "Un-Mute":
+#             new_mute_state = 0
+            
+#         device.SetMute(new_mute_state, None)
+#     else:
+#         g_log.info(f"Device {device} not found in audio_manager.devices. ({deviceid})")
 
 @TPClient.on(TP.TYPES.onListChange)
 def onListChange(data):
@@ -523,10 +343,7 @@ def onShutdown(data):
     listener.stop()
     g_log.info('Received shutdown event from TP Client.')
 
-# Error handler
-# @TPClient.on(TP.TYPES.onError)
-# def onError(exc):
-#     g_log.error(f'Error in TP Client event handler: {repr(exc)}')
+
 
 def main():
     global TPClient, g_log
@@ -604,7 +421,7 @@ def main():
     return ret
 
 if __name__ == "__main__":
-    volumeprocess = volumeProcess()
+    volumeprocess = volumeProcess(TPClient)
     audio_manager = AudioManager(TPClient)
     listener = WindowFocusListener(TPClient)
     main()
