@@ -111,61 +111,96 @@ Have you ever wondering if theres a way to easily control Windows Volume Mixer w
 ## Actions
 ![Action List](images/actions.png)
 
-- Audio Output/Input Device Switcher
-    - This allows you to change global default or communication audio device.
-- Audio Output/Input Device Toggle
-    - This allows you to toggle the default global audio or communication device between two choices.
-- Set Device Volume
-    - This allows your Input & Output devices volume.
-- Set Device Mute
-    - This allows your Input & Output devices mute.
-- Mute/Unmute process volume
-    - This allows you to Toggle/Mute/Unmute any program you pick.
-- Adjust App Volume
-    - It allows you to Increase/Decrease/Set any application Volume
-- Individual App Audio Device switcher
-    - This allows you to change app's volume source to a different audio device.
+- **`Audio Output/Input Device Switcher`**
+    - **Description:** This allows you to change **global default** or **communication audio device**.
+
+- **`Audio Output/Input Device Toggle`**
+    - **Description:** This allows you to **toggle** the default global audio or communication device between two choices.
+
+- **`Set Device Volume`**
+    - **Description:** This allows you to set, increase, or decrease the volume of your **Input & Output devices**.
+
+- **`Set Device Mute`**
+    - **Description:** This allows you to mute or unmute your **Input & Output devices**.
+
+- **`Mute/Unmute Process Volume`**
+    - **Description:** This allows you to **Toggle/Mute/Unmute** any program you pick.
+
+- **`Adjust App Volume`**
+    - **Description:** This allows you to **Increase/Decrease/Set** any application volume.
+
+- **`Individual App Audio Device Switcher`**
+    - **Description:** This allows you to change an app's volume source to a different **audio device**.
 
 ## States
+
 ![State list](images/states.png)
 ![Audio state](images/AudioDevice.png)
 
-- is appname.exe Active
-    - This gives `True` or `False` It will show `True` if application is playing sound
-- appname.exe Mute state
-   - This gives `Muted` or `Un-muted` depends on application
-- appname.exe Volume
-    - This gives the applications volume `0-100`
+### Application States
 
-- Audio Device: Default Output Device
-    - Displays current Default output device
-- Audio Device: Default Output Communication Device
-    - Displays current Default output communication device
-- Audio Device: Default Input Device
-    - This shows your default input device
-- Audio Device: Default Input Communication Device
-    - This shows your default input communication device
+- **`is appname.exe Active`**
+  - **Description:** Indicates whether the application is currently playing sound.
+  - **Values:** `True` or `False`
 
-- Volume Mixer: Get Current Master Volume
-    - Displays current master output volume via states ranging from `0-100`
-- Volume Mixer: Get Current Master Input Volume
-    - Displays current master input volume via states ranging from `0-100`
-- Volume Mixer: Current Focused App
-    - This gives you current focused app's name
-- Volume Mixer: Focused App Volume
-    - Displays current focused app volume as a state ranging from `0-100`
-- Volume Mixer: Focused App Mute
-    - Displays current focused app Mute as a state, `Muted` or `Un-muted`
+- **`appname.exe Mute state`**
+  - **Description:** Shows the mute status of the application.
+  - **Values:** `Muted` or `Un-muted`
+
+- **`appname.exe Volume`**
+  - **Description:** Displays the volume level of the application.
+  - **Range:** `0-100`
+
+### Audio Device States
+
+- **`Audio Device: Default Output Device`**
+  - **Description:** Displays the currently selected default output audio device.
+
+- **`Audio Device: Default Output Communication Device`**
+  - **Description:** Displays the currently selected default output communication device.
+
+- **`Audio Device: Default Input Device`**
+  - **Description:** Shows the currently selected default input audio device.
+
+- **`Audio Device: Default Input Communication Device`**
+  - **Description:** Shows the currently selected default input communication device.
+
+### Volume Mixer States
+
+- **`Volume Mixer: Current Master Volume`**
+  - **Description:** Displays the current master output volume.
+  - **Range:** `0-100`
+
+- **`Volume Mixer: Current Master Input Volume`**
+  - **Description:** Displays the current master input volume.
+  - **Range:** `0-100`
+
+- **`Volume Mixer: Current Focused App`**
+  - **Description:** Displays the name of the currently focused application.
+
+- **`Volume Mixer: Focused App Volume`**
+  - **Description:** Displays the volume level of the currently focused application.
+  - **Range:** `0-100`
+
+- **`Volume Mixer: Focused App Mute`**
+  - **Description:** Shows the mute status of the currently focused application.
+  - **Values:** `Muted` or `Un-muted`
+`
 
 ### Sliders
+![Sliders list](images/sliders.png)
 
-This plugin also includes slider functionality. to use this feature simply change button type to `Slider` then you will have
+This plugin also includes slider functionality. To use this feature, simply change the button type to `Slider`. You will have access to the following sliders:
 
-- Volume Mixer: APP Volume slider
-    - when button type is slider, you have ability to change selected app volume
-     using slider also includes Current app (controls volume on whatever is on focus) and control master volume too! 
-- Volume Mixer: Default Audio Device Slider
-    - Adjust the volume of your default input/output devices using sliders.
+- **`Volume Mixer: APP Volume Slider`**
+  - **Description:** Allows you to adjust the volume of the selected application using a slider.
+  - **Features:** 
+    - Includes the ability to control the volume of the current app (whatever is in focus).
+    - Also allows you to adjust the master volume.
+
+- **`Volume Mixer: Input/Output Devices Volume Slider`**
+  - **Description:** Adjust the volume of your input/output audio devices using sliders.
+
 
 # Versioning
 
