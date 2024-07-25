@@ -15,7 +15,7 @@ from pycaw.api.endpointvolume import IAudioEndpointVolumeCallback
 from pycaw.api.endpointvolume.depend import AUDIO_VOLUME_NOTIFICATION_DATA
 from logging import getLogger
 
-from tppEntry import TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, TP_PLUGIN_STATES, __version__
+from tppEntry import TP_PLUGIN_INFO, TP_PLUGIN_CONNECTORS, TP_PLUGIN_STATES, PLUGIN_ID, __version__
 from audioUtil import audioSwitch
 import TouchPortalAPI as TP
 
@@ -74,52 +74,32 @@ class AudioEndpointVolumeCallback(COMObject):
                 about the volume and mute state of the device.
         """
         notify_data = cast(pNotify, POINTER(AUDIO_VOLUME_NOTIFICATION_DATA)).contents
-        
+        master_volume = round(notify_data.fMasterVolume * 100)
         #         # g_log.info(f"Event Context: {notify_data.guidEventContext}")
         #         # g_log.info(f"Muted: {notify_data.bMuted}")
         #         # g_log.info(f"Master Volume: {notify_data.fMasterVolume}")
         #         # g_log.info(f"Channel Count: {notify_data.nChannels}")
         #         # g_log.info(f"Channel Volumes: {list(notify_data.afChannelVolumes[:notify_data.nChannels])}")
-        # Print volume and mute status along with device name
-        g_log.info(f"({self.device_type}){self.device_name}: Muted:{notify_data.bMuted} Volume: {notify_data.fMasterVolume} ")
         
-        # g_log.info("Default Input:", audio_manager.device_change_client.defaultInputDeviceID)
+        g_log.info(f"({self.device_type}){self.device_name}: Muted:{notify_data.bMuted} Volume: {notify_data.fMasterVolume * 100:.0f}%")
+
         if self.device_id == self.audio_manager.device_change_client.defaultInputDeviceID:
-            master_input_volume = round(notify_data.fMasterVolume * 100)
-            master_input_volume_connector_id = (
-                f"pc_{TP_PLUGIN_INFO['id']}_"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}=Input|"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}=Default"
-            )
-            if master_input_volume_connector_id in self.TPClient.shortIdTracker:
-                self.TPClient.shortIdUpdate(
-                        self.TPClient.shortIdTracker[master_input_volume_connector_id],
-                        master_input_volume)
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentInputMasterVolume", str(master_volume))
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentInputMasterVolumeMute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
+            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
 
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume input"]["id"], str(master_input_volume))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume input mute"]["id"], "Muted" if notify_data.bMuted == 1 else "Un-muted")
-       
         elif self.device_id == self.audio_manager.device_change_client.defaultOutputDeviceID:
-            ## we need to find out what device is triggering the volume changes... hmm
-            master_volume = round(notify_data.fMasterVolume * 100)
-            master_volume_connector_id = (
-                f"pc_{TP_PLUGIN_INFO['id']}_"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}=Output|"
-                f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}=Default"
-            )
-            if master_volume_connector_id in self.TPClient.shortIdTracker:
-                self.TPClient.shortIdUpdate(
-                        self.TPClient.shortIdTracker[master_volume_connector_id],
-                        master_volume)
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume"]["id"], str(master_volume))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["master volume mute"]["id"], "Muted" if notify_data.bMuted == 1 else "Un-muted")
-        else:
-            g_log.info("Its other devices... must be new.. tell the developer to fix this...", self.device_id)
-            g_log.debug("The Output", self.audio_manager.device_change_client.defaultOutputDeviceID)
-            g_log.debug("The Input", self.audio_manager.device_change_client.defaultInputDeviceID)
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentMasterVolume", str(master_volume))
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.currentMasterVolumeMute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
+            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
 
+        else:
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.device.{self.device_type}.{self.device_name}.volume", str(master_volume))
+            self.TPClient.stateUpdate(PLUGIN_ID + f".state.device.{self.device_type}.{self.device_name}.mute", "Muted" if notify_data.bMuted == 1 else "Un-muted")
+            self.audio_manager.update_connector(self.device_type, self.device_name, notify_data.fMasterVolume)
+
+    
+            
 class AudioManager:
     """
     Manages audio devices and their volume callbacks. Handles device registration, 
@@ -168,12 +148,51 @@ class AudioManager:
         self.inputDevicesReversed = {}
         self.outputDevicesReversed = {}
 
+    
+    def update_connector(self, device_type, device_name, master_volume):
+        """
+        Update the connector state for a specific device.
+
+        Parameters:
+        device_type (str): The type of the device (e.g., 'output', 'input').
+        device_name (str): The name of the device.
+        master_volume (float): The master volume level of the device.
+        """
+        # Update the state
+        volume_percentage = str(master_volume * 100) 
+        
+        g_log.info(f"Connector updated: {device_name} Volume: {volume_percentage}%")
+
+        other_device_connector_id = (
+            f"pc_{TP_PLUGIN_INFO['id']}_"
+            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
+            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}={device_type.capitalize()}|"
+            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}={device_name}"
+        )
+
+        if other_device_connector_shortId := self.TPClient.shortIdTracker.get(other_device_connector_id, None):
+            self.TPClient.shortIdUpdate(
+                other_device_connector_shortId,
+                master_volume * 100  
+            )
     def create_callback_for_device(self, device, device_type, device_name, device_id):
         try:
             interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
             volume = interface.QueryInterface(IAudioEndpointVolume)
             callback = AudioEndpointVolumeCallback(device_type, device_name, device_id, self, self.TPClient)
             volume.RegisterControlChangeNotify(callback)
+            
+            current_volume = volume.GetMasterVolumeLevelScalar()
+            current_mute = volume.GetMute()
+            
+            if device_type == "input":
+                self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.volume", f"{device_type} - {device_name} Volume", str(round(current_volume * 100)), "Input Devices")
+                self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.mute", f"{device_type} - {device_name} Mute",  "Muted" if current_mute == 1 else "Un-muted", "Input Devices")
+            elif device_type =="output":
+                self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.volume", f"{device_type} - {device_name} Volume", str(round(current_volume * 100)), "Output Devices")
+                self.TPClient.createState(PLUGIN_ID + f".state.device.{device_type}.{device_name}.mute", f"{device_type} - {device_name} Mute",  "Muted" if current_mute == 1 else "Un-muted", "Output Devices")
+            
+            self.update_connector(device_type, device_name, current_volume)
             return volume, callback
         except Exception as e:
             g_log.info(f"Error creating callback for device {device.GetId()}: {e}")

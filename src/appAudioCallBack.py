@@ -81,10 +81,6 @@ class VolumeProcess:
         
 
 class AppAudioCallBack(MagicSession):
-    TPClient = None
-    volume_process = None
-    listener = None
-    
     @classmethod
     def set_tp_client(cls, client, volume_process, listener):
         cls.TPClient:TP.Client = client
@@ -138,22 +134,21 @@ class AppAudioCallBack(MagicSession):
         """
         if self.app_name not in self.volume_process.audio_ignore_list:
             self.TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
-            #g_log.info(f"{self.app_name} NEW VOLUME", str(round(new_volume*100)))
             app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
-            if app_connector_id in self.TPClient.shortIdTracker :
-                self.TPClient.shortIdUpdate(
-                    self.TPClient.shortIdTracker[app_connector_id],
-                    round(new_volume*100))
-                
+            
+            if app_connector_shortId := self.TPClient.shortIdTracker.get(app_connector_id, None):
+                self.TPClient.shortIdUpdate(app_connector_shortId, round(new_volume * 100))
+
             """Checking for Current App If Its Active, Adjust it also"""
             if (activeWindow := self.listener.get_app_path()) != "":
                 current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
 
-                if current_app_connector_id in self.TPClient.shortIdTracker :
+                if current_app_connector_shortId := self.TPClient.shortIdTracker.get(current_app_connector_id, None):
                     self.TPClient.shortIdUpdate(
-                        self.TPClient.shortIdTracker[current_app_connector_id],
-                        int(new_volume*100) if os.path.basename(activeWindow) == self.app_name else 0)
+                        current_app_connector_shortId,
+                        int(new_volume * 100) if os.path.basename(activeWindow) == self.app_name else 0)      
             g_log.debug(f"Volume: {self.app_name} - {new_volume}")
+       
             
     def update_mute(self, muted):
         """ when mute state is changed by user or through other app """
