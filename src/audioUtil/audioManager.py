@@ -158,10 +158,6 @@ class AudioManager:
         device_name (str): The name of the device.
         master_volume (float): The master volume level of the device.
         """
-        # Update the state
-        volume_percentage = str(master_volume * 100) 
-        
-        g_log.info(f"Connector updated: {device_name} Volume: {volume_percentage}%")
 
         other_device_connector_id = (
             f"pc_{TP_PLUGIN_INFO['id']}_"
@@ -175,6 +171,7 @@ class AudioManager:
                 other_device_connector_shortId,
                 master_volume * 100  
             )
+            
     def create_callback_for_device(self, device, device_type, device_name, device_id):
         try:
             interface = device.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
