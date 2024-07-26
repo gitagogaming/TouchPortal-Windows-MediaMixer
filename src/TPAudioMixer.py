@@ -44,7 +44,7 @@ def updateDeviceChoices(options, choiceId, instanceId=None):
     if (choiceId == TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["devicelist"]["id"] or \
             choiceId == TP_PLUGIN_ACTIONS["setDeviceVolume"]["data"]["deviceOption"]["id"] or \
                 choiceId == TP_PLUGIN_ACTIONS["setDeviceMute"]["data"]["deviceOption"]["id"] or \
-                    choiceId == TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']):
+                    choiceId == TP_PLUGIN_CONNECTORS['Device Volume Slider']['data']['deviceOption']['id']):
 
         deviceList.insert(0, "Default")
     if instanceId:
@@ -221,7 +221,7 @@ def heldingButton(data):
 @TPClient.on(TP.TYPES.onConnectorChange)
 def connectors(data):
     g_log.debug(f"connector Change: {data}")
-    if data['connectorId'] == TP_PLUGIN_CONNECTORS["APP control"]['id']:
+    if data['connectorId'] == TP_PLUGIN_CONNECTORS["APP Volume Slider"]['id']:
         if data['data'][0]['value'] == "Master Volume":
             # maintaining backwards compatible with old plugin actions...
             #    this was originally in the 'app' connector.. ask KB why
@@ -249,7 +249,7 @@ def connectors(data):
                 g_log.debug(f"Exception in other app volume change Error: " + str(e))
 
 
-    elif data["connectorId"] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"]:
+    elif data["connectorId"] == TP_PLUGIN_CONNECTORS["Device Volume Slider"]["id"]:
         device_type = data['data'][0]['value']
         name = data['data'][1]['value']
         slider_value = float(data['value'])
@@ -300,12 +300,12 @@ def onListChange(data):
             g_log.info("Update device setDeviceMute error " + str(e))
     
     ## left this the same, but it could be modified a bit.. atleast the updateDeviceChoices func so it retrieves from audio_controller
-    elif data['actionId'] == TP_PLUGIN_CONNECTORS["Windows Audio"]["id"] and \
-        data["listId"] == TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceType"]["id"]:
+    elif data['actionId'] == TP_PLUGIN_CONNECTORS["Device Volume Slider"]["id"] and \
+        data["listId"] == TP_PLUGIN_CONNECTORS["Device Volume Slider"]["data"]["deviceType"]["id"]:
         try:
-            updateDeviceChoices(data['value'], TP_PLUGIN_CONNECTORS["Windows Audio"]["data"]["deviceOption"]["id"], data['instanceId'])
+            updateDeviceChoices(data['value'], TP_PLUGIN_CONNECTORS["Device Volume Slider"]["data"]["deviceOption"]["id"], data['instanceId'])
         except Exception as e:
-            g_log.info("Update device Windows Audio error " + str(e))
+            g_log.info("Update device Device Volume Slider error " + str(e))
 
 
 # Shutdown handler

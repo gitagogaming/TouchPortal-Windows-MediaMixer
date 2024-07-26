@@ -54,7 +54,7 @@ TP_PLUGIN_CATEGORIES = {
 }
 
 TP_PLUGIN_CONNECTORS = {
-    "APP control": {
+    "APP Volume Slider": {
         'category': "main",
         "id": PLUGIN_ID + ".connector.APPcontrol",
         "name": "Volume Mixer: APP Volume slider",
@@ -64,17 +64,17 @@ TP_PLUGIN_CONNECTORS = {
             "appchoice": {
                 "id": PLUGIN_ID + ".connector.APPcontrol.data.slidercontrol",
                 "type": "choice",
-                "label": "APP choice list for APP control slider",
+                "label": "APP choice list for APP Volume slider",
                 "default": "",
                 "valueChoices": []
             }
         }
     },
-    "Windows Audio": {
+    "Device Volume Slider": {
         'category': "main",
         "id": PLUGIN_ID + ".connector.WinAudio",
         "name": "Volume Mixer: Windows Volume slider",
-        "format": "Control Windows Audio$[1] device$[2]",
+        "format": "Control Device Volume $[1] device$[2]",
         "label": "control windows Volume",
         "data": {
             'deviceType': {

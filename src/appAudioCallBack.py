@@ -27,7 +27,7 @@ class VolumeProcess:
     def updateVolumeMixerChoicelist(self):
         self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["Inc/DecrVol"]['data']['AppChoice']['id'], self.volume_process[1:])
         self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppMute"]['data']['appChoice']['id'], self.volume_process[1:])
-        self.TPClient.choiceUpdate(TP_PLUGIN_CONNECTORS["APP control"]["data"]["appchoice"]['id'], self.volume_process)
+        self.TPClient.choiceUpdate(TP_PLUGIN_CONNECTORS["APP Volume Slider"]["data"]["appchoice"]['id'], self.volume_process)
         self.TPClient.choiceUpdate(TP_PLUGIN_ACTIONS["AppAudioSwitch"]["data"]["AppChoice"]["id"], self.volume_process[1:])
     
     def removeAudioState(self, app_name):
@@ -134,14 +134,14 @@ class AppAudioCallBack(MagicSession):
         """
         if self.app_name not in self.volume_process.audio_ignore_list:
             self.TPClient.stateUpdate(PLUGIN_ID + f".createState.{self.app_name}.volume", str(round(new_volume*100)))
-            app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}={self.app_name}"
+            app_connector_id =f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP Volume Slider']['id']}|{TP_PLUGIN_CONNECTORS['APP Volume Slider']['data']['appchoice']['id']}={self.app_name}"
             
             if app_connector_shortId := self.TPClient.shortIdTracker.get(app_connector_id, None):
                 self.TPClient.shortIdUpdate(app_connector_shortId, round(new_volume * 100))
 
             """Checking for Current App If Its Active, Adjust it also"""
             if (activeWindow := self.listener.get_app_path()) != "":
-                current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+                current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP Volume Slider']['id']}|{TP_PLUGIN_CONNECTORS['APP Volume Slider']['data']['appchoice']['id']}=Current app"
                 if self.listener.current_focused_name == self.app_name:
                     if current_app_connector_shortId := self.TPClient.shortIdTracker.get(current_app_connector_id, None):
                         if self.listener.last_volume != new_volume:

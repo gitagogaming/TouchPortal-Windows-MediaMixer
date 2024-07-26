@@ -20,7 +20,7 @@ class WindowFocusListener:
         self.thread = None
         
         self.TPClient = TPClient
-        self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP control']['id']}|{TP_PLUGIN_CONNECTORS['APP control']['data']['appchoice']['id']}=Current app"
+        self.current_app_connector_id = f"pc_{TP_PLUGIN_INFO['id']}_{TP_PLUGIN_CONNECTORS['APP Volume Slider']['id']}|{TP_PLUGIN_CONNECTORS['APP Volume Slider']['data']['appchoice']['id']}=Current app"
         
         self.current_focused_name = ""
         self.current_focused_exe_path = ""
