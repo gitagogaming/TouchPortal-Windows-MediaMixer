@@ -1,5 +1,6 @@
 import os
 import sys
+import webbrowser
 from time import sleep
 from argparse import ArgumentParser
 from ctypes import windll
@@ -22,6 +23,7 @@ import TouchPortalAPI as TP
 from tppEntry import (PLUGIN_ID, TP_PLUGIN_ACTIONS, TP_PLUGIN_CONNECTORS, 
                         TP_PLUGIN_INFO, TP_PLUGIN_SETTINGS, __version__)
 
+from PluginUpdater import GitHubUpdater
 
 sys.coinit_flags = 0
 g_log = getLogger(__name__)
@@ -76,9 +78,50 @@ def onConnect(data):
     if settings := data.get('settings'):
         handleSettings(settings, True)
 
-    run_callbacks()    
-    
+    update_info = updater.check_for_updates("100")#str(data['pluginVersion']))
+    if update_info:
+        updater.show_update_notification(
+            notification_id=f"{PLUGIN_ID}.update",
+            title=f"Windows Media Mixer {update_info['version']} is available",
+            msg="Hii",  
+        )
+        # TPClient.showNotification(
+        #     notificationId= f"{PLUGIN_ID}.TP.Plugins.Update_Check",
+        #     title=f"Windows Media Mixer {update_info['version']} is available",
+        #     # msg=patchNotes,
+        #     options= [
+        #     {
+        #     "id":f"{PLUGIN_ID}.update.download",
+        #     "title":"(Auto) Download & Update!"
+        #     },
+        #     {
+        #     "id":f"{PLUGIN_ID}.update.manual",
+        #     "title":"(Manual) Open Plugin Download Page"
+        #     }])
+        # updater.run_gui(update_info['version'], update_info['downloadURL'])
+    print("UH HI", update_info)
 
+    # run_callbacks()    
+    
+@TPClient.on(TP.TYPES.onNotificationOptionClicked)
+def onNoticationClicked(data):
+    # if data['optionId'] == f"{PLUGIN_ID}.update.download":
+    if data['optionId'] == updater.options[0]['id']:
+        if updater.update_info.get('downloadURL', None):
+            download_URL = updater.update_info['downloadURL']
+            g_log.info("Downloading the update...")
+            ## start download
+            updater.run_gui(download_URL)
+            
+            TPClient.el
+            
+    elif data['optionId'] == updater.options[1]['id']:
+        if updater.update_info['htmlURL']:
+            webbrowser.open(updater.update_info['htmlURL'], new=0, autoraise=True)
+        else:
+            g_log.error("Error opening the download page, URL not found.", updater.update_info['htmlURL'])
+        pass
+            
 def run_callbacks():
     pythoncom.CoInitialize()
     try:
@@ -396,4 +439,5 @@ if __name__ == "__main__":
     volume_process = VolumeProcess(TPClient)
     audio_manager = AudioManager(TPClient)
     listener = WindowFocusListener(TPClient)
+    updater = GitHubUpdater(TPClient=TPClient, owner='gitagogaming', repo='TouchPortal-Windows-MediaMixer', icon_path="icon.png", pre_releases=True)
     main()
