@@ -157,16 +157,16 @@ class AudioManager:
         Update the connector state for a specific device.
 
         Parameters:
-        device_type (str): The type of the device (e.g., 'output', 'input').
+        device_type (str): The type of the device (e.g., 'Output', 'Input').
         device_name (str): The name of the device.
         master_volume (float): The master volume level of the device.
         """
 
         other_device_connector_id = (
             f"pc_{TP_PLUGIN_INFO['id']}_"
-            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['id']}|"
-            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceType']['id']}={device_type}|"
-            f"{TP_PLUGIN_CONNECTORS['Windows Audio']['data']['deviceOption']['id']}={device_name}"
+            f"{TP_PLUGIN_CONNECTORS['Device Volume Slider']['id']}|"
+            f"{TP_PLUGIN_CONNECTORS['Device Volume Slider']['data']['deviceType']['id']}={device_type}|"
+            f"{TP_PLUGIN_CONNECTORS['Device Volume Slider']['data']['deviceOption']['id']}={device_name}"
         )
 
         if other_device_connector_shortId := self.TPClient.shortIdTracker.get(other_device_connector_id, None):
