@@ -161,7 +161,6 @@ class AudioManager:
         device_name (str): The name of the device.
         master_volume (float): The master volume level of the device.
         """
-
         other_device_connector_id = (
             f"pc_{TP_PLUGIN_INFO['id']}_"
             f"{TP_PLUGIN_CONNECTORS['Device Volume Slider']['id']}|"
@@ -358,7 +357,8 @@ class AudioManager:
                 "erole": ERole.eCommunications.value
             }
         }
-
+        statelist = []
+            
         def get_default_device_id(edata, erole):
             """Helper function to get device ID from device type and role."""
             
@@ -377,32 +377,40 @@ class AudioManager:
             self.device_change_client.defaultOutputCommunicationDeviceID = get_default_device_id(device_map['outputCommunicationDevice']['edata'], device_map['outputCommunicationDevice']['erole'])
             self.device_change_client.defaultInputDeviceID = get_default_device_id(device_map['inputDevice']['edata'], device_map['inputDevice']['erole'])
             self.device_change_client.defaultInputCommunicationDeviceID = get_default_device_id(device_map['inputCommunicationDevice']['edata'], device_map['inputCommunicationDevice']['erole'])
+            
+            statelist.extend([
+            { "id": TP_PLUGIN_STATES["outputDevice"]["id"], "value": self.outputDevicesReversed.get(self.device_change_client.defaultOutputDeviceID, "Unknown")},
+            { "id": TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], "value": self.outputDevicesReversed.get(self.device_change_client.defaultOutputCommunicationDeviceID, "Unknown")},
+            { "id": TP_PLUGIN_STATES["inputDevice"]["id"], "value": self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown")},
+            { "id": TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], "value": self.inputDevicesReversed.get(self.device_change_client.defaultInputCommunicationDeviceID, "Unknown")}
+            ])
 
-            # Update states
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDevice"]["id"], self.outputDevicesReversed.get(self.device_change_client.defaultOutputDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["outputDeviceCommunication"]["id"], self.outputDevicesReversed.get(self.device_change_client.defaultOutputCommunicationDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDevice"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown"))
-            self.TPClient.stateUpdate(TP_PLUGIN_STATES["inputDeviceCommunication"]["id"], self.inputDevicesReversed.get(self.device_change_client.defaultInputCommunicationDeviceID, "Unknown"))
-                    # Update connectors for each device individually
+                # Update connectors for each device individually
             if self.device_change_client.defaultOutputDeviceID:
                 device_name = self.outputDevicesReversed.get(self.device_change_client.defaultOutputDeviceID, "Unknown")
                 device, _ = self.devices[self.device_change_client.defaultOutputDeviceID]
-                print("Device Name: ", device_name)
                 if device:
                     master_volume = device.GetMasterVolumeLevelScalar()
                     muted = device.GetMute()
-                    self.update_connector(TP_PLUGIN_STATES["outputDevice"]["id"], device_name, master_volume)
-                    # self.update_connector("Output", device_name, master_volume)
+                    statelist.extend([
+                        {"id": PLUGIN_ID + f".state.currentMasterVolume", "value": str(round(master_volume * 100)) },
+                        {"id": PLUGIN_ID + f".state.currentMasterVolumeMute", "value": "Muted" if muted == 1 else "Un-muted"}
+                    ])
+                    self.update_connector("Output", 'Default', master_volume)
 
             if self.device_change_client.defaultInputDeviceID:
                 device_name = self.inputDevicesReversed.get(self.device_change_client.defaultInputDeviceID, "Unknown")
                 device, _ = self.devices[self.device_change_client.defaultInputDeviceID]
                 if device:
-                    # master_volume = device.GetMasterVolumeLevelScalar()
+                    master_volume = device.GetMasterVolumeLevelScalar()
                     muted = device.GetMute()
+                    statelist.extend([
+                        {"id": PLUGIN_ID + f".state.currentInputMasterVolume", "value": str(round(master_volume * 100)) },
+                        {"id": PLUGIN_ID + f".state.currentInputMasterVolumeMute", "value": "Muted" if muted == 1 else "Un-muted"}
+                    ])
                     self.update_connector("Input", "Default", device.GetMasterVolumeLevelScalar())
         
-
+            self.TPClient.stateUpdateMany(statelist)
             # Log the device IDs
             g_log.info(f"Default output device ID: {self.device_change_client.defaultOutputDeviceID}")
             g_log.info(f"Default output communication device ID: {self.device_change_client.defaultOutputCommunicationDeviceID}")

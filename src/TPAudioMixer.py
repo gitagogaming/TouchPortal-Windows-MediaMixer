@@ -175,9 +175,12 @@ def onAction(data):
         device_type = action_data[0]['value']
         name = action_data[1]['value']
         volume_value = float(action_data[2]['value'])
+        ## Maintaing backwards compatibility with older version of plugin for users who havent updated their button actions.
+        volume_action = action_data[3].get('value') if len(action_data) > 3 else "Set"
+        
         device, deviceid = audio_manager.get_device_by_name(name, device_type)
         if device:
-            setDeviceVolume(device, deviceid, volume_value)
+            setDeviceVolume(device, deviceid, volume_value, volume_action)
     
     # For Devices        
     elif actionid == TP_PLUGIN_ACTIONS["setDeviceMute"]["id"] and action_data[0]["value"] != "Pick One":
