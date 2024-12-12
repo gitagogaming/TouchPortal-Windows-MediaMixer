@@ -1,8 +1,7 @@
 # TouchPortal-Windows-MediaMixer
 This plugin is a complete overhaul of the original Windows Media Mixer Plugin For TouchPortal.  
 
-This solves the issue with the 3081 error constantly bothering you in the background notifications of TouchPortal
-
+This newest version solves the issue with the 3081 error constantly bothering you in the background notifications of TouchPortal<br>
 It also does away with the constant polling of your system to check for audio processes and instead moves to a 100% event based system leaving your system free to do the things it needs to.
 
 The original windows media mixer can be found [here](https://github.com/KillerBOSS2019/TouchPortal-Windows-MediaMixer)
