@@ -1,5 +1,10 @@
 # TouchPortal-Windows-MediaMixer
-a TouchPortal plugin that allows you to control Window's default audio mixer.
+This plugin is a complete overhaul of the original Windows Media Mixer Plugin For TouchPortal.  
+
+This solves the issue with the 3081 error constantly bothering you in the background notifications of TouchPortal
+It also does away with the constant polling of your system to check for audio processes and instead moves to a 100% event based system leaving your system free to do the things it needs to.
+
+-------
 
 - [TouchPortal-Windows-MediaMixer](#touchportal-windows-mediamixer)
 - [Change Log](#change-log)
@@ -13,6 +18,19 @@ a TouchPortal plugin that allows you to control Window's default audio mixer.
 
 # Change Log
 ```
+v2.0.0 - Major Rework
+    - fixed 3081 errors
+    - Added categories for plugin states
+    - Added set/increase/decrease option for `setDeviceVolume` function.
+    - Improved error handling all over
+    - Added connector & state update for default devices; introduced `initialize_default_devices` and `fetch_devices`.
+    - Integrated callbacks for device changes and volume/mute changes.
+    - Removed polling function to reduce CPU/memory usage.
+    - Replaced external dependencies with native windows actions instead
+
+
+
+
 v1.5.1 - Fixed listId not updating correctly
     Bug Fixes:
         - Fixed listId not updating correctly
